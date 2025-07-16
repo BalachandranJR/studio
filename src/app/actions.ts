@@ -133,7 +133,7 @@ export async function generateItinerary(
     if (error instanceof DOMException && error.name === "TimeoutError") {
       return {
         success: false,
-        error: "The request to the travel planning service timed out. Please try again."
+        error: "The request to the travel planning service timed out. The workflow may still be running in the background. Please try again in a few minutes."
       }
     }
 
