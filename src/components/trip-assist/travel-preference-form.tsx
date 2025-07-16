@@ -56,13 +56,13 @@ export function TravelPreferenceForm({ onSubmit, isPending }: TravelPreferenceFo
     resolver: zodResolver(travelPreferenceSchema),
     defaultValues: {
       destination: "",
-      numPeople: 1,
+      numPeople: "1",
       ageGroups: [],
       interests: [],
       otherInterests: "",
       budget: {
         currency: 'USD',
-        amount: 1000,
+        amount: "1000",
       },
       transport: [],
       otherTransport: "",
