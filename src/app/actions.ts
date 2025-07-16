@@ -25,10 +25,9 @@ export async function generateItinerary(
       throw new Error("The N8N_WEBHOOK_URL environment variable is not set.");
     }
 
-    // Add AbortController for timeout handling
-    const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 120000); // 2 minutes timeout
-
+    // A long-running n8n workflow should use a "Respond to Webhook" node.
+    // We remove the timeout here to allow the connection to be held open
+    // until the workflow is complete.
     const response = await fetch(webhookUrl, {
       method: 'POST',
       headers: {
@@ -41,10 +40,7 @@ export async function generateItinerary(
           to: validatedData.dates.to.toISOString(),
         }
       }),
-      signal: controller.signal
     });
-
-    clearTimeout(timeoutId);
 
     if (!response.ok) {
       const errorText = await response.text();
@@ -113,7 +109,7 @@ export async function generateItinerary(
   } catch (error) {
     console.error("Error in generateItinerary:", error);
     
-    // Handle specific timeout errors
+    // Handle specific timeout errors - This may not be hit if the server itself times out first
     if (error instanceof DOMException && error.name === 'AbortError') {
       return { 
         success: false, 
