@@ -19,7 +19,7 @@ export async function generateItinerary(
     const validatedData = travelPreferenceSchema.parse(data);
     
     // The n8n webhook endpoint
-    const webhookUrl = "https://n8n-ishj.onrender.com/webhook-test/travel-planner";
+    const webhookUrl = "https://n8n-ishj.onrender.com/webhook/travel-planner";
 
     const response = await fetch(webhookUrl, {
       method: 'POST',
