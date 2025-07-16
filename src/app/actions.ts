@@ -1,59 +1,16 @@
 "use server";
 
 import { z } from "zod";
-import { addDays, format } from "date-fns";
+import { format } from "date-fns";
 import type { Itinerary, TravelPreference } from "@/lib/types";
+import { generateItineraryFlow } from "@/ai/flows/generate-itinerary-flow";
 import { travelPreferenceSchema } from "@/lib/types";
+
 
 const revisionSchema = z.object({
   itineraryId: z.string(),
   feedback: z.string().min(10, "Please provide more detailed feedback."),
 });
-
-// This is a mocked function. In a real application, you would make a POST request
-// to your n8n workflow endpoint with the travel preference data.
-// const N8N_WEBHOOK_URL = process.env.N8N_WEBHOOK_URL;
-// const response = await fetch(N8N_WEBHOOK_URL, {
-//   method: 'POST',
-//   headers: { 'Content-Type': 'application/json' },
-//   body: JSON.stringify(data),
-// });
-// const itinerary = await response.json();
-
-const generateMockItinerary = (data: TravelPreference): Itinerary => {
-  const { destination, dates, numPeople } = data;
-  const id = new Date().getTime().toString();
-  const startDate = format(dates.from, "yyyy-MM-dd");
-  const endDate = format(dates.to, "yyyy-MM-dd");
-
-  const itineraryDays = [];
-  let currentDate = dates.from;
-  let dayCount = 1;
-  while (currentDate <= dates.to) {
-    itineraryDays.push({
-      day: dayCount,
-      date: format(currentDate, "MMMM do, yyyy"),
-      activities: [
-        { time: "9:00 AM", description: `Breakfast at a local cafe`, type: "food", icon: "food" },
-        { time: "10:30 AM", description: `Explore the central square of ${destination}`, type: "attraction", icon: "attraction" },
-        { time: "1:00 PM", description: "Lunch featuring regional specialties", type: "food", icon: "food" },
-        { time: "3:00 PM", description: "Visit a museum or art gallery", type: "activity", icon: "activity" },
-        { time: "7:00 PM", description: `Dinner for ${numPeople} at a highly-rated restaurant`, type: "food", icon: "food" },
-        { time: "All Day", description: "Check into your accommodation", type: "accommodation", icon: "accommodation" },
-      ],
-    });
-    currentDate = addDays(currentDate, 1);
-    dayCount++;
-  }
-
-  return {
-    id,
-    destination,
-    startDate,
-    endDate,
-    days: itineraryDays,
-  };
-};
 
 export async function generateItinerary(
   data: TravelPreference
@@ -61,23 +18,21 @@ export async function generateItinerary(
   try {
     const validatedData = travelPreferenceSchema.parse(data);
     
-    // Simulate network delay
-    await new Promise(resolve => setTimeout(resolve, 2000));
-
-    const itinerary = generateMockItinerary(validatedData);
-
     // Simulate a potential error
     if (validatedData.destination.toLowerCase() === "error") {
       throw new Error("Could not generate an itinerary for the selected destination.");
     }
     
+    const itinerary = await generateItineraryFlow(validatedData);
+
     return { success: true, itinerary };
   } catch (error) {
     if (error instanceof z.ZodError) {
       console.error(error.issues);
       return { success: false, error: "Invalid form data. Please check your inputs." };
     }
-    return { success: false, error: error instanceof Error ? error.message : "An unknown error occurred." };
+    console.error("Error generating itinerary:", error);
+    return { success: false, error: error instanceof Error ? error.message : "An AI error occurred. Please try again." };
   }
 }
 
@@ -99,7 +54,7 @@ export async function reviseItinerary(
       id: new Date().getTime().toString(),
       destination: "Revised Destination",
       startDate: format(new Date(), "yyyy-MM-dd"),
-      endDate: format(addDays(new Date(), 4), "yyyy-MM-dd"),
+      endDate: format(new Date(), "yyyy-MM-dd"),
       days: [
         {
           day: 1,

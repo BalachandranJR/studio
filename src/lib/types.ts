@@ -72,23 +72,27 @@ export const travelPreferenceSchema = z.object({
 
 export type TravelPreference = z.infer<typeof travelPreferenceSchema>;
 
-export interface Activity {
-  time: string;
-  description: string;
-  type: 'food' | 'activity' | 'transport' | 'accommodation' | 'attraction';
-  icon: string;
-}
+export const ActivitySchema = z.object({
+  time: z.string().describe("The time of the activity, e.g., '9:00 AM'."),
+  description: z.string().describe("A brief description of the activity."),
+  type: z.enum(['food', 'activity', 'transport', 'accommodation', 'attraction']).describe("The category of the activity."),
+  icon: z.string().describe("An icon name representing the activity type (e.g., 'food', 'car')."),
+});
 
-export interface ItineraryDay {
-  day: number;
-  date: string;
-  activities: Activity[];
-}
+export const ItineraryDaySchema = z.object({
+  day: z.number().describe("The day number of the itinerary, starting from 1."),
+  date: z.string().describe("The date for this day's activities, formatted as 'MMMM do, yyyy'."),
+  activities: z.array(ActivitySchema).describe("A list of activities for the day."),
+});
 
-export interface Itinerary {
-  id: string;
-  destination: string;
-  startDate: string;
-  endDate: string;
-  days: ItineraryDay[];
-}
+export const ItinerarySchema = z.object({
+  id: z.string().describe("A unique identifier for the itinerary."),
+  destination: z.string().describe("The travel destination."),
+  startDate: z.string().describe("The start date of the trip in 'yyyy-MM-dd' format."),
+  endDate: z.string().describe("The end date of the trip in 'yyyy-MM-dd' format."),
+  days: z.array(ItineraryDaySchema).describe("A list of days, each with their own schedule."),
+});
+
+export type Activity = z.infer<typeof ActivitySchema>;
+export type ItineraryDay = z.infer<typeof ItineraryDaySchema>;
+export type Itinerary = z.infer<typeof ItinerarySchema>;
