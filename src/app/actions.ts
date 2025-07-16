@@ -28,7 +28,10 @@ export async function generateItinerary(
     }
     
     if (!appUrl) {
-        throw new Error("The NEXT_PUBLIC_APP_URL environment variable is not set. Please set it to your app's public URL.");
+        return { 
+            success: false, 
+            error: "The NEXT_PUBLIC_APP_URL environment variable is not set. Please set it to your app's public URL in the environment settings." 
+        };
     }
 
     // Create a unique session ID for this request.
