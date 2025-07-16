@@ -25,8 +25,11 @@ export async function generateItinerary(
       throw new Error("The N8N_WEBHOOK_URL environment variable is not set.");
     }
 
+    // This is the URL that n8n should call back when it's done.
+    const callbackUrl = `${process.env.NEXT_PUBLIC_APP_URL}/api/webhook`;
+
     // Fire-and-forget: Send the request but don't wait for the full response.
-    // In a real app, n8n would handle sending the result asynchronously (e.g., email).
+    // In a real app, n8n would handle sending the result asynchronously.
     fetch(webhookUrl, {
       method: 'POST',
       headers: {
@@ -34,6 +37,8 @@ export async function generateItinerary(
       },
       body: JSON.stringify({
         ...validatedData,
+        // Also send the callback URL to n8n
+        callbackUrl: callbackUrl,
         dates: {
           from: validatedData.dates.from.toISOString(),
           to: validatedData.dates.to.toISOString(),
