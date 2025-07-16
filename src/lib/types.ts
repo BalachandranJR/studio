@@ -1,5 +1,14 @@
 import { z } from "zod";
 
+export const ageGroups = [
+  { id: "infants", label: "Infants (0-1)" },
+  { id: "children", label: "Children (2-12)" },
+  { id: "teenagers", label: "Teenagers (13-19)" },
+  { id: "young_adults", label: "Young Adults (20-35)" },
+  { id: "adults", label: "Adults (36-64)" },
+  { id: "seniors", label: "Seniors (65+)" },
+] as const;
+
 export const travelPreferenceSchema = z.object({
   destination: z.string().min(3, "Destination must be at least 3 characters long."),
   dates: z.object({
@@ -10,6 +19,9 @@ export const travelPreferenceSchema = z.object({
   interests: z.string().min(5, "Please describe your interests.").max(500, "Please keep interests under 500 characters."),
   budget: z.enum(["economy", "mid-range", "luxury"]),
   transport: z.enum(["flights", "train", "car"]),
+  ageGroups: z.array(z.string()).refine((value) => value.some((item) => item), {
+    message: "You have to select at least one age group.",
+  }),
 });
 
 export type TravelPreference = z.infer<typeof travelPreferenceSchema>;

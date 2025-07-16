@@ -5,7 +5,7 @@ import { useForm } from "react-hook-form";
 import { format } from "date-fns";
 import { CalendarIcon, Car, DollarSign, Loader2, MapPin, Palette, Plane, Train, Users } from "lucide-react";
 
-import { travelPreferenceSchema, type TravelPreference } from "@/lib/types";
+import { travelPreferenceSchema, type TravelPreference, ageGroups } from "@/lib/types";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Calendar } from "@/components/ui/calendar";
@@ -28,6 +28,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
+import { Checkbox } from "@/components/ui/checkbox";
 
 interface TravelPreferenceFormProps {
   onSubmit: (data: TravelPreference) => void;
@@ -43,6 +44,7 @@ export function TravelPreferenceForm({ onSubmit, isPending }: TravelPreferenceFo
       interests: "",
       budget: "mid-range",
       transport: "flights",
+      ageGroups: [],
     },
   });
 
@@ -193,6 +195,58 @@ export function TravelPreferenceForm({ onSubmit, isPending }: TravelPreferenceFo
             )}
           />
         </div>
+        
+        <FormField
+          control={form.control}
+          name="ageGroups"
+          render={() => (
+            <FormItem>
+              <div className="mb-4">
+                <FormLabel>Traveler Age Groups</FormLabel>
+                <FormDescription>
+                  Select all that apply to help us tailor activities.
+                </FormDescription>
+              </div>
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                {ageGroups.map((item) => (
+                  <FormField
+                    key={item.id}
+                    control={form.control}
+                    name="ageGroups"
+                    render={({ field }) => {
+                      return (
+                        <FormItem
+                          key={item.id}
+                          className="flex flex-row items-start space-x-3 space-y-0"
+                        >
+                          <FormControl>
+                            <Checkbox
+                              checked={field.value?.includes(item.id)}
+                              onCheckedChange={(checked) => {
+                                return checked
+                                  ? field.onChange([...(field.value || []), item.id])
+                                  : field.onChange(
+                                      field.value?.filter(
+                                        (value) => value !== item.id
+                                      )
+                                    )
+                              }}
+                            />
+                          </FormControl>
+                          <FormLabel className="font-normal">
+                            {item.label}
+                          </FormLabel>
+                        </FormItem>
+                      )
+                    }}
+                  />
+                ))}
+              </div>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
+
 
         <FormField
           control={form.control}
