@@ -1,9 +1,10 @@
+
 "use server";
 
 import { z } from "zod";
 import { format } from "date-fns";
 import type { Itinerary, TravelPreference } from "@/lib/types";
-import { travelPreferenceSchema } from "@/lib/types";
+import { ItinerarySchema, travelPreferenceSchema } from "@/lib/types";
 
 
 const revisionSchema = z.object({
@@ -41,21 +42,21 @@ export async function generateItinerary(
       throw new Error(`The travel planning service returned an error: ${response.statusText}`);
     }
     
-    // The n8n workflow should return the itinerary directly.
-    // The raw response from n8n might be nested under a `data` property,
-    // so we'll try to parse it flexibly.
     const responseData = await response.json();
-    const itinerary = responseData.data || responseData;
+    let itineraryData = responseData.data || responseData;
 
+    // Ensure the start and end dates from the form are on the final itinerary object
+    itineraryData.startDate = validatedData.dates.from.toISOString();
+    itineraryData.endDate = validatedData.dates.to.toISOString();
 
-    // You might need to add Zod parsing here to validate the itinerary from n8n
-    // For now, we'll trust the source.
+    const itinerary = ItinerarySchema.parse(itineraryData);
+    
     return { success: true, itinerary };
 
   } catch (error) {
     if (error instanceof z.ZodError) {
       console.error(error.issues);
-      return { success: false, error: "Invalid form data. Please check your inputs." };
+      return { success: false, error: "Invalid data received from the travel service. Please check the n8n workflow output." };
     }
     console.error("Error generating itinerary:", error);
     return { success: false, error: error instanceof Error ? error.message : "An unknown error occurred. Please try again." };
@@ -79,8 +80,8 @@ export async function reviseItinerary(
     const revisedItinerary: Itinerary = {
       id: new Date().getTime().toString(),
       destination: "Revised Destination",
-      startDate: format(new Date(), "yyyy-MM-dd"),
-      endDate: format(new Date(), "yyyy-MM-dd"),
+      startDate: new Date().toISOString(),
+      endDate: new Date().toISOString(),
       days: [
         {
           day: 1,
