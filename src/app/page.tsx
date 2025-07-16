@@ -66,11 +66,23 @@ export default function Home() {
 
         {isLoading && <ItinerarySkeleton />}
         
-        {error && (
-           <Alert variant="destructive" className="mt-8">
-            <AlertTitle>Error Generating Itinerary</AlertTitle>
-            <AlertDescription>{error}</AlertDescription>
-          </Alert>
+        {error && !isLoading && (
+           <div className="space-y-4">
+            <Alert variant="destructive">
+              <AlertTitle>Error Generating Itinerary</AlertTitle>
+              <AlertDescription>{error}</AlertDescription>
+            </Alert>
+            <button
+              onClick={() => {
+                setError(null);
+                setItinerary(null);
+                setIsLoading(false);
+              }}
+              className="text-primary hover:underline"
+            >
+              Try again
+            </button>
+           </div>
         )}
 
         {itinerary && (
