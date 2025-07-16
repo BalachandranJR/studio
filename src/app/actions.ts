@@ -74,7 +74,8 @@ export async function generateItinerary(
     return { success: true, itinerary };
   } catch (error) {
     if (error instanceof z.ZodError) {
-      return { success: false, error: "Invalid form data." };
+      console.error(error.issues);
+      return { success: false, error: "Invalid form data. Please check your inputs." };
     }
     return { success: false, error: error instanceof Error ? error.message : "An unknown error occurred." };
   }
