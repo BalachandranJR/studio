@@ -39,6 +39,8 @@ export async function generateItinerary(
           to: validatedData.dates.to.toISOString(),
         }
       }),
+      // Add a 2-minute timeout to allow the n8n workflow to complete
+      signal: AbortSignal.timeout(120000)
     });
 
     if (!response.ok) {
@@ -54,7 +56,7 @@ export async function generateItinerary(
     let rawItineraryData;
     
     if (Array.isArray(responseData)) {
-      // Response is an array (as shown in your paste-3.txt)
+      // Response is an array
       if (responseData.length === 0) {
         return { success: false, error: "No data received from the travel service." };
       }
@@ -128,6 +130,13 @@ export async function generateItinerary(
       };
     }
     
+    if (error instanceof DOMException && error.name === "TimeoutError") {
+      return {
+        success: false,
+        error: "The request to the travel planning service timed out. Please try again."
+      }
+    }
+
     return { 
       success: false, 
       error: error instanceof Error ? error.message : "An unknown error occurred. Please try again." 
