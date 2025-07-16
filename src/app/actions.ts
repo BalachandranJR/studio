@@ -21,23 +21,17 @@ export async function generateItinerary(
     const validatedData = travelPreferenceSchema.parse(data);
     
     const webhookUrl = process.env.N8N_WEBHOOK_URL;
-    const appUrl = process.env.NEXT_PUBLIC_APP_URL;
 
     if (!webhookUrl) {
       throw new Error("The N8N_WEBHOOK_URL environment variable is not set.");
     }
     
-    if (!appUrl) {
-        return { 
-            success: false, 
-            error: "The NEXT_PUBLIC_APP_URL environment variable is not set. Please set it to your app's public URL in the environment settings." 
-        };
-    }
-
     // Create a unique session ID for this request.
     const sessionId = Date.now().toString();
 
-    const callbackUrl = `${appUrl}/api/webhook?sessionId=${sessionId}`;
+    // Using the hardcoded URL for debugging as requested.
+    const hardcodedAppUrl = "https://6000-firebase-studio-1752627865956.cluster-ancjwrkgr5dvux4qug5rbzyc2y.cloudworkstations.dev/";
+    const callbackUrl = `${hardcodedAppUrl}api/webhook?sessionId=${sessionId}`;
 
     // Manually construct the payload to ensure correct serialization
     const payload = {
