@@ -39,20 +39,22 @@ export async function generateItinerary(
 
     const callbackUrl = `${appUrl}/api/webhook?sessionId=${sessionId}`;
 
+    const payload = {
+      ...validatedData,
+      dates: {
+        from: validatedData.dates.from.toISOString(),
+        to: validatedData.dates.to.toISOString(),
+      },
+      callbackUrl: callbackUrl,
+    };
+
     // Fire-and-forget: Send the request but don't wait for the full response.
     fetch(webhookUrl, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
       },
-      body: JSON.stringify({
-        ...validatedData,
-        callbackUrl: callbackUrl, // Pass the callback URL with session ID to n8n
-        dates: {
-          from: validatedData.dates.from.toISOString(),
-          to: validatedData.dates.to.toISOString(),
-        }
-      }),
+      body: JSON.stringify(payload),
     }).catch(error => {
       // Log the error but don't block the user. The main error handling is in page.tsx
       console.error("Error sending request to n8n webhook:", error);
