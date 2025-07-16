@@ -13,9 +13,10 @@ const revisionSchema = z.object({
   feedback: z.string().min(10, "Please provide more detailed feedback."),
 });
 
+// This is where we will "fire-and-forget" the request to n8n
 export async function generateItinerary(
   data: TravelPreference
-): Promise<{ success: true } | { success: false; error: string }> {
+): Promise<{ success: true, sessionId: string } | { success: false; error: string }> {
   try {
     const validatedData = travelPreferenceSchema.parse(data);
     
@@ -24,12 +25,13 @@ export async function generateItinerary(
     if (!webhookUrl) {
       throw new Error("The N8N_WEBHOOK_URL environment variable is not set.");
     }
+    
+    // Create a unique session ID for this request.
+    const sessionId = Date.now().toString();
 
-    // This is the URL that n8n should call back when it's done.
-    const callbackUrl = `${process.env.NEXT_PUBLIC_APP_URL}/api/webhook`;
+    const callbackUrl = `${process.env.NEXT_PUBLIC_APP_URL}/api/webhook?sessionId=${sessionId}`;
 
     // Fire-and-forget: Send the request but don't wait for the full response.
-    // In a real app, n8n would handle sending the result asynchronously.
     fetch(webhookUrl, {
       method: 'POST',
       headers: {
@@ -37,25 +39,22 @@ export async function generateItinerary(
       },
       body: JSON.stringify({
         ...validatedData,
-        // Also send the callback URL to n8n
-        callbackUrl: callbackUrl,
+        callbackUrl: callbackUrl, // Pass the callback URL with session ID to n8n
         dates: {
           from: validatedData.dates.from.toISOString(),
           to: validatedData.dates.to.toISOString(),
         }
       }),
     }).catch(error => {
-      // Log the error but don't block the user.
+      // Log the error but don't block the user. The main error handling is in page.tsx
       console.error("Error sending request to n8n webhook:", error);
     });
     
     // Immediately return success to the UI.
-    return { success: true };
+    return { success: true, sessionId };
 
   } catch (error) {
     console.error("Error in generateItinerary:", error);
-    
-    // Handle Zod validation errors on the form data before sending
     if (error instanceof z.ZodError) {
       console.error("Zod validation failed on form input:", error.issues);
       return { 
@@ -63,8 +62,6 @@ export async function generateItinerary(
         error: "There was an error with your submission. Please check the form and try again." 
       };
     }
-    
-    // Handle all other errors
     return { 
       success: false, 
       error: error instanceof Error ? error.message : "An unexpected error occurred. Please try again." 
@@ -78,14 +75,8 @@ export async function reviseItinerary(
   try {
     const { feedback } = revisionSchema.parse(data);
     
-    // In a real app, you would send the feedback and original itinerary
-    // back to your n8n workflow to get a revised version.
-    // For this mock, we'll just simulate the process.
-
     await new Promise(resolve => setTimeout(resolve, 2000));
 
-    // This is where you would receive the revised itinerary.
-    // We will return a slightly modified version for demonstration.
     const revisedItinerary: Itinerary = {
       id: new Date().getTime().toString(),
       destination: "Revised Destination",
