@@ -24,6 +24,17 @@ export const areasOfInterest = [
     { id: "wellness_spa", label: "Wellness & Spa" },
 ] as const;
 
+export const transportOptions = [
+    { id: "flight", label: "Flight" },
+    { id: "train", label: "Train" },
+    { id: "car_rental", label: "Car Rental" },
+    { id: "bus", label: "Bus" },
+    { id: "boat_ferry", label: "Boat / Ferry" },
+    { id: "bike", label: "Bike" },
+    { id: "walking", label: "Walking" },
+] as const;
+
+
 export const foodPreferences = [
     { id: "vegetarian", label: "Vegetarian" },
     { id: "vegan", label: "Vegan" },
@@ -51,7 +62,10 @@ export const travelPreferenceSchema = z.object({
     currency: z.string().min(1, "Please select a currency."),
     amount: z.coerce.number({invalid_type_error: "Please enter a valid number."}).min(1, "Budget must be at least 1."),
   }),
-  transport: z.enum(["flights", "train", "car"]),
+  transport: z.array(z.string()).refine((value) => value.some((item) => item), {
+    message: "You have to select at least one transport preference.",
+  }),
+  otherTransport: z.string().optional(),
   foodPreferences: z.array(z.string()).optional(),
   otherFoodPreferences: z.string().optional(),
 });

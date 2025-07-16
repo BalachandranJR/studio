@@ -6,7 +6,7 @@ import { useForm } from "react-hook-form";
 import { format } from "date-fns";
 import { CalendarIcon, Car, Loader2, MapPin, Plane, Train, Users, Utensils, Sprout, WheatOff, Star, MilkOff, HandPlatter } from "lucide-react";
 
-import { travelPreferenceSchema, type TravelPreference, ageGroups, areasOfInterest, foodPreferences } from "@/lib/types";
+import { travelPreferenceSchema, type TravelPreference, ageGroups, areasOfInterest, foodPreferences, transportOptions } from "@/lib/types";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Calendar } from "@/components/ui/calendar";
@@ -65,7 +65,8 @@ export function TravelPreferenceForm({ onSubmit, isPending }: TravelPreferenceFo
         currency: 'USD',
         amount: 1000,
       },
-      transport: "flights",
+      transport: [],
+      otherTransport: "",
       foodPreferences: [],
       otherFoodPreferences: "",
     },
@@ -348,64 +349,68 @@ export function TravelPreferenceForm({ onSubmit, isPending }: TravelPreferenceFo
         <Card className="border-none shadow-none">
             <CardHeader className="px-2">
                 <CardTitle>Transport Preference</CardTitle>
-                <CardDescription>How do you prefer to travel?</CardDescription>
+                <CardDescription>Select all that apply.</CardDescription>
             </CardHeader>
-            <CardContent className="px-2">
+            <CardContent className="space-y-6 px-2">
                 <FormField
-                control={form.control}
-                name="transport"
-                render={({ field }) => (
-                    <FormItem>
-                    <FormControl>
-                        <RadioGroup
-                        onValueChange={field.onChange}
-                        defaultValue={field.value}
-                        className="grid grid-cols-1 md:grid-cols-3 gap-4"
-                        >
+                  control={form.control}
+                  name="transport"
+                  render={() => (
+                      <FormItem>
+                        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                            {transportOptions.map((item) => (
+                            <FormField
+                                key={item.id}
+                                control={form.control}
+                                name="transport"
+                                render={({ field }) => {
+                                return (
+                                    <FormItem
+                                    key={item.id}
+                                    className="flex flex-row items-start space-x-3 space-y-0"
+                                    >
+                                    <FormControl>
+                                        <Checkbox
+                                        checked={field.value?.includes(item.id)}
+                                        onCheckedChange={(checked) => {
+                                            return checked
+                                            ? field.onChange([...(field.value || []), item.id])
+                                            : field.onChange(
+                                                field.value?.filter(
+                                                    (value) => value !== item.id
+                                                )
+                                                )
+                                        }}
+                                        />
+                                    </FormControl>
+                                    <FormLabel className="font-normal">
+                                        {item.label}
+                                    </FormLabel>
+                                    </FormItem>
+                                )
+                                }}
+                            />
+                            ))}
+                        </div>
+                        <FormMessage />
+                      </FormItem>
+                  )}
+                />
+                <FormField
+                    control={form.control}
+                    name="otherTransport"
+                    render={({ field }) => (
                         <FormItem>
-                            <FormControl>
-                                <RadioGroupItem value="flights" id="flights" className="sr-only" />
-                            </FormControl>
-                            <FormLabel htmlFor="flights">
-                                <Card className={cn("cursor-pointer", field.value === "flights" && "border-primary")}>
-                                    <CardContent className="flex flex-col items-center justify-center p-6 gap-2">
-                                        <Plane className="h-8 w-8" />
-                                        <span className="font-semibold">Flights</span>
-                                    </CardContent>
-                                </Card>
-                            </FormLabel>
+                        <FormLabel>Other Transport</FormLabel>
+                        <FormControl>
+                            <Textarea
+                            placeholder="Tell us about any other transport preferences..."
+                            {...field}
+                            />
+                        </FormControl>
+                        <FormMessage />
                         </FormItem>
-                         <FormItem>
-                            <FormControl>
-                                <RadioGroupItem value="train" id="train" className="sr-only" />
-                            </FormControl>
-                            <FormLabel htmlFor="train">
-                                <Card className={cn("cursor-pointer", field.value === "train" && "border-primary")}>
-                                    <CardContent className="flex flex-col items-center justify-center p-6 gap-2">
-                                        <Train className="h-8 w-8" />
-                                        <span className="font-semibold">Train</span>
-                                    </CardContent>
-                                </Card>
-                            </FormLabel>
-                        </FormItem>
-                         <FormItem>
-                            <FormControl>
-                                <RadioGroupItem value="car" id="car" className="sr-only" />
-                            </FormControl>
-                            <FormLabel htmlFor="car">
-                                <Card className={cn("cursor-pointer", field.value === "car" && "border-primary")}>
-                                    <CardContent className="flex flex-col items-center justify-center p-6 gap-2">
-                                        <Car className="h-8 w-8" />
-                                        <span className="font-semibold">Car</span>
-                                    </CardContent>
-                                </Card>
-                            </FormLabel>
-                        </FormItem>
-                        </RadioGroup>
-                    </FormControl>
-                    <FormMessage />
-                    </FormItem>
-                )}
+                    )}
                 />
             </CardContent>
         </Card>
