@@ -5,6 +5,7 @@ import { z } from "zod";
 import { format } from "date-fns";
 import type { Itinerary, TravelPreference } from "@/lib/types";
 import { ItinerarySchema, travelPreferenceSchema } from "@/lib/types";
+import 'dotenv/config'
 
 
 const revisionSchema = z.object({
@@ -19,7 +20,11 @@ export async function generateItinerary(
     const validatedData = travelPreferenceSchema.parse(data);
     
     // The n8n webhook endpoint
-    const webhookUrl = "https://n8n-ishj.onrender.com/webhook/travel-planner";
+    const webhookUrl = process.env.N8N_WEBHOOK_URL;
+    
+    if (!webhookUrl) {
+      throw new Error("The N8N_WEBHOOK_URL environment variable is not set.");
+    }
 
     const response = await fetch(webhookUrl, {
       method: 'POST',
