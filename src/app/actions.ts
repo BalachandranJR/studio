@@ -19,19 +19,21 @@ export async function generateItinerary(
   try {
     const validatedData = travelPreferenceSchema.parse(data);
     
-    // The n8n webhook endpoint
     const webhookUrl = process.env.N8N_WEBHOOK_URL;
     
     if (!webhookUrl) {
       throw new Error("The N8N_WEBHOOK_URL environment variable is not set.");
     }
 
+    // Add AbortController for timeout handling
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 120000); // 2 minutes timeout
+
     const response = await fetch(webhookUrl, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
       },
-      // Dates need to be converted to strings for JSON serialization
       body: JSON.stringify({
         ...validatedData,
         dates: {
@@ -39,9 +41,10 @@ export async function generateItinerary(
           to: validatedData.dates.to.toISOString(),
         }
       }),
-      // Add a 2-minute timeout to allow the n8n workflow to complete
-      signal: AbortSignal.timeout(120000)
+      signal: controller.signal
     });
+
+    clearTimeout(timeoutId);
 
     if (!response.ok) {
       const errorText = await response.text();
@@ -50,35 +53,29 @@ export async function generateItinerary(
     }
     
     const responseData = await response.json();
-    console.log("Raw webhook response:", JSON.stringify(responseData, null, 2));
     
-    // Based on your webhook response structure, handle the array format
+    // Your existing response parsing logic...
     let rawItineraryData;
     
     if (Array.isArray(responseData)) {
-      // Response is an array
       if (responseData.length === 0) {
         return { success: false, error: "No data received from the travel service." };
       }
       
       const firstItem = responseData[0];
       
-      // Check if it's an error response
       if (firstItem.error) {
         return { success: false, error: firstItem.message || "Travel service returned an error." };
       }
       
-      // Check if it has success flag and itinerary
       if (firstItem.success && firstItem.itinerary) {
         rawItineraryData = firstItem.itinerary;
       } else if (firstItem.itinerary) {
         rawItineraryData = firstItem.itinerary;
       } else {
-        // Fallback - use the first item directly
         rawItineraryData = firstItem;
       }
     } else if (responseData && typeof responseData === 'object') {
-      // Response is a single object
       if (responseData.error) {
         return { success: false, error: responseData.message || "Travel service returned an error." };
       }
@@ -98,10 +95,7 @@ export async function generateItinerary(
       return { success: false, error: "No itinerary data found in the response." };
     }
 
-    console.log("Extracted itinerary data:", JSON.stringify(rawItineraryData, null, 2));
-
-    // Ensure the start date, end date, and destination from the form are on the final itinerary object
-    // This is crucial because the webhook might not return them in the expected format.
+    // Ensure required fields
     if (!rawItineraryData.destination) {
       rawItineraryData.destination = validatedData.destination;
     }
@@ -112,34 +106,42 @@ export async function generateItinerary(
       rawItineraryData.endDate = validatedData.dates.to.toISOString();
     }
 
-    // Validate the itinerary structure
     const itinerary = ItinerarySchema.parse(rawItineraryData);
-    
-    console.log("Validated itinerary:", JSON.stringify(itinerary, null, 2));
     
     return { success: true, itinerary };
 
   } catch (error) {
     console.error("Error in generateItinerary:", error);
     
+    // Handle specific timeout errors
+    if (error instanceof DOMException && error.name === 'AbortError') {
+      return { 
+        success: false, 
+        error: "The travel planning service is taking longer than expected. Please try again with a shorter trip or simpler preferences." 
+      };
+    }
+    
+    // Handle network/fetch errors
+    if (error instanceof TypeError && error.message.includes('fetch')) {
+      return { 
+        success: false, 
+        error: "Unable to connect to the travel planning service. Please check your internet connection and try again." 
+      };
+    }
+    
+    // Handle Zod validation errors
     if (error instanceof z.ZodError) {
       console.error("Zod validation failed:", error.issues);
       return { 
         success: false, 
-        error: `Invalid data structure from travel service: ${error.issues.map(i => i.message).join(', ')}` 
+        error: "The travel service returned invalid data. Please try again or contact support if the issue persists." 
       };
     }
     
-    if (error instanceof DOMException && error.name === "TimeoutError") {
-      return {
-        success: false,
-        error: "The request to the travel planning service timed out. The workflow may still be running in the background. Please try again in a few minutes."
-      }
-    }
-
+    // Handle all other errors
     return { 
       success: false, 
-      error: error instanceof Error ? error.message : "An unknown error occurred. Please try again." 
+      error: error instanceof Error ? error.message : "An unexpected error occurred. Please try again." 
     };
   }
 }
