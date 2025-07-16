@@ -121,7 +121,7 @@ export function ItineraryDisplay({ itinerary, setItinerary }: ItineraryDisplayPr
                         <div key={index} className="relative flex items-start gap-4">
                            <div className="absolute top-1 -left-[1.2rem] h-6 w-6 bg-background flex items-center justify-center rounded-full">
                               <span className="h-5 w-5 bg-primary/20 text-primary rounded-full flex items-center justify-center">
-                                <ItineraryIcon name={activity.icon} className="h-3 w-3" />
+                                <ItineraryIcon type={activity.type} icon={activity.icon} className="h-3 w-3" />
                               </span>
                            </div>
                           <div className="flex-1">

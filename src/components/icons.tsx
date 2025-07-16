@@ -18,22 +18,31 @@ export const iconMap: { [key: string]: ComponentType<LucideProps> } = {
   food: UtensilsCrossed,
   activity: Palette,
   attraction: Landmark,
-  landmark: Landmark, // Added to match webhook response
+  landmark: Landmark,
   transport: Plane,
   flights: Plane,
   train: Train,
   wellness: Sparkles,
   spa: Sparkles,
   shopping: ShoppingBasket,
+  default: Palette,
 };
 
-export function ItineraryIcon({ name, ...props }: { name: string } & LucideProps) {
-  const IconComponent = iconMap[name];
+interface ItineraryIconProps extends LucideProps {
+    type: string;
+    icon: string;
+}
 
+export function ItineraryIcon({ type, icon, ...props }: ItineraryIconProps) {
+  let IconComponent = iconMap[icon];
+  
   if (!IconComponent) {
-    // Return a default icon or null if no mapping is found
-    return <Palette {...props} />;
+    IconComponent = iconMap[type];
   }
-
+  
+  if (!IconComponent) {
+    IconComponent = iconMap.default;
+  }
+  
   return <IconComponent {...props} />;
 }
