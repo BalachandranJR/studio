@@ -79,96 +79,22 @@ export function TravelPreferenceForm({ onSubmit, isPending }: TravelPreferenceFo
     <Form {...form}>
       <form onSubmit={form.handleSubmit(onFormSubmit)} className="space-y-8">
         
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-8">
-          <Card className="border-none shadow-none p-0">
-            <CardHeader className="px-2">
-              <CardTitle>Destination Details</CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-6 px-2">
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                <FormField
-                  control={form.control}
-                  name="destination"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Destination</FormLabel>
-                      <FormControl>
-                        <div className="relative">
-                          <MapPin className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                          <Input placeholder="e.g., Paris, France" {...field} className="pl-10" />
-                        </div>
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-                <FormField
-                  control={form.control}
-                  name="dates"
-                  render={({ field }) => (
-                    <FormItem className="flex flex-col">
-                      <FormLabel>Travel Dates</FormLabel>
-                      <Popover>
-                        <PopoverTrigger asChild>
-                          <FormControl>
-                            <Button
-                              variant={"outline"}
-                              className={cn(
-                                "w-full justify-start text-left font-normal",
-                                !field.value?.from && "text-muted-foreground"
-                              )}
-                            >
-                              <CalendarIcon className="mr-2 h-4 w-4" />
-                              {field.value?.from ? (
-                                field.value.to ? (
-                                  <>
-                                    {format(field.value.from, "LLL dd, y")} -{" "}
-                                    {format(field.value.to, "LLL dd, y")}
-                                  </>
-                                ) : (
-                                  format(field.value.from, "LLL dd, y")
-                                )
-                              ) : (
-                                <span>Pick a date range</span>
-                              )}
-                            </Button>
-                          </FormControl>
-                        </PopoverTrigger>
-                        <PopoverContent className="w-auto p-0" align="start">
-                          <Calendar
-                            initialFocus
-                            mode="range"
-                            defaultMonth={field.value?.from}
-                            selected={{ from: field.value?.from, to: field.value?.to }}
-                            onSelect={field.onChange}
-                            numberOfMonths={2}
-                            disabled={(date) => date < new Date(new Date().setHours(0,0,0,0)) }
-                          />
-                        </PopoverContent>
-                      </Popover>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-              </div>
-            </CardContent>
-          </Card>
-
-          <Card className="border-none shadow-none p-0">
-            <CardHeader className="px-2">
-              <CardTitle>Traveler Details</CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-6 px-2">
+        <Card className="border-none shadow-none p-0">
+          <CardHeader className="px-2">
+            <CardTitle>Destination Details</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-6 px-2">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <FormField
                 control={form.control}
-                name="numPeople"
+                name="destination"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Number of People</FormLabel>
+                    <FormLabel>Destination</FormLabel>
                     <FormControl>
                       <div className="relative">
-                        <Users className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                        <Input type="number" placeholder="e.g., 2" {...field} onChange={e => field.onChange(parseInt(e.target.value, 10) || 0)} className="pl-10" />
+                        <MapPin className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                        <Input placeholder="e.g., Paris, France" {...field} className="pl-10" />
                       </div>
                     </FormControl>
                     <FormMessage />
@@ -177,57 +103,129 @@ export function TravelPreferenceForm({ onSubmit, isPending }: TravelPreferenceFo
               />
               <FormField
                 control={form.control}
-                name="ageGroups"
-                render={() => (
-                  <FormItem>
-                    <div className="mb-4">
-                      <FormLabel>Traveler Age Groups</FormLabel>
-                      <FormDescription>
-                        Select all that apply to help us tailor activities.
-                      </FormDescription>
-                    </div>
-                    <div className="grid grid-cols-2 gap-4">
-                      {ageGroups.map((item) => (
-                        <FormField
-                          key={item.id}
-                          control={form.control}
-                          name="ageGroups"
-                          render={({ field }) => {
-                            return (
-                              <FormItem
-                                key={item.id}
-                                className="flex flex-row items-start space-x-3 space-y-0"
-                              >
-                                <FormControl>
-                                  <Checkbox
-                                    checked={field.value?.includes(item.id)}
-                                    onCheckedChange={(checked) => {
-                                      return checked
-                                        ? field.onChange([...(field.value || []), item.id])
-                                        : field.onChange(
-                                            field.value?.filter(
-                                              (value) => value !== item.id
-                                            )
-                                          )
-                                    }}
-                                  />
-                                </FormControl>
-                                <FormLabel className="font-normal">
-                                  {item.label}
-                                </FormLabel>
-                              </FormItem>
-                            )
-                          }}
+                name="dates"
+                render={({ field }) => (
+                  <FormItem className="flex flex-col">
+                    <FormLabel>Travel Dates</FormLabel>
+                    <Popover>
+                      <PopoverTrigger asChild>
+                        <FormControl>
+                          <Button
+                            variant={"outline"}
+                            className={cn(
+                              "w-full justify-start text-left font-normal",
+                              !field.value?.from && "text-muted-foreground"
+                            )}
+                          >
+                            <CalendarIcon className="mr-2 h-4 w-4" />
+                            {field.value?.from ? (
+                              field.value.to ? (
+                                <>
+                                  {format(field.value.from, "LLL dd, y")} -{" "}
+                                  {format(field.value.to, "LLL dd, y")}
+                                </>
+                              ) : (
+                                format(field.value.from, "LLL dd, y")
+                              )
+                            ) : (
+                              <span>Pick a date range</span>
+                            )}
+                          </Button>
+                        </FormControl>
+                      </PopoverTrigger>
+                      <PopoverContent className="w-auto p-0" align="start">
+                        <Calendar
+                          initialFocus
+                          mode="range"
+                          defaultMonth={field.value?.from}
+                          selected={{ from: field.value?.from, to: field.value?.to }}
+                          onSelect={field.onChange}
+                          numberOfMonths={2}
+                          disabled={(date) => date < new Date(new Date().setHours(0,0,0,0)) }
                         />
-                      ))}
-                    </div>
+                      </PopoverContent>
+                    </Popover>
                     <FormMessage />
                   </FormItem>
                 )}
               />
-            </CardContent>
-          </Card>
-        </div>
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card className="border-none shadow-none p-0">
+          <CardHeader className="px-2">
+            <CardTitle>Traveler Details</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-6 px-2">
+            <FormField
+              control={form.control}
+              name="numPeople"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Number of People</FormLabel>
+                  <FormControl>
+                    <div className="relative">
+                      <Users className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                      <Input type="number" placeholder="e.g., 2" {...field} onChange={e => field.onChange(parseInt(e.target.value, 10) || 0)} className="pl-10" />
+                    </div>
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+            <FormField
+              control={form.control}
+              name="ageGroups"
+              render={() => (
+                <FormItem>
+                  <div className="mb-4">
+                    <FormLabel>Traveler Age Groups</FormLabel>
+                    <FormDescription>
+                      Select all that apply to help us tailor activities.
+                    </FormDescription>
+                  </div>
+                  <div className="grid grid-cols-2 gap-4">
+                    {ageGroups.map((item) => (
+                      <FormField
+                        key={item.id}
+                        control={form.control}
+                        name="ageGroups"
+                        render={({ field }) => {
+                          return (
+                            <FormItem
+                              key={item.id}
+                              className="flex flex-row items-start space-x-3 space-y-0"
+                            >
+                              <FormControl>
+                                <Checkbox
+                                  checked={field.value?.includes(item.id)}
+                                  onCheckedChange={(checked) => {
+                                    return checked
+                                      ? field.onChange([...(field.value || []), item.id])
+                                      : field.onChange(
+                                          field.value?.filter(
+                                            (value) => value !== item.id
+                                          )
+                                        )
+                                  }}
+                                />
+                              </FormControl>
+                              <FormLabel className="font-normal">
+                                {item.label}
+                              </FormLabel>
+                            </FormItem>
+                          )
+                        }}
+                      />
+                    ))}
+                  </div>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+          </CardContent>
+        </Card>
 
         <Separator />
 
