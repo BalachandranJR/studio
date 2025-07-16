@@ -39,12 +39,22 @@ export async function generateItinerary(
 
     const callbackUrl = `${appUrl}/api/webhook?sessionId=${sessionId}`;
 
+    // Manually construct the payload to ensure correct serialization
     const payload = {
-      ...validatedData,
+      destination: validatedData.destination,
       dates: {
         from: validatedData.dates.from.toISOString(),
         to: validatedData.dates.to.toISOString(),
       },
+      numPeople: validatedData.numPeople,
+      ageGroups: validatedData.ageGroups,
+      interests: validatedData.interests,
+      otherInterests: validatedData.otherInterests,
+      budget: validatedData.budget,
+      transport: validatedData.transport,
+      otherTransport: validatedData.otherTransport,
+      foodPreferences: validatedData.foodPreferences,
+      otherFoodPreferences: validatedData.otherFoodPreferences,
       callbackUrl: callbackUrl,
     };
 
