@@ -1,2 +1,2 @@
-// Flows will be imported for their side effects in this file.
-import './flows/generate-itinerary-flow';
+// This file can be used to register Genkit flows for local development.
+// Since we are using n8n, no flows are registered here.

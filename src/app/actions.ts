@@ -3,7 +3,6 @@
 import { z } from "zod";
 import { format } from "date-fns";
 import type { Itinerary, TravelPreference } from "@/lib/types";
-import { generateItineraryFlow } from "@/ai/flows/generate-itinerary-flow";
 import { travelPreferenceSchema } from "@/lib/types";
 
 
@@ -18,21 +17,48 @@ export async function generateItinerary(
   try {
     const validatedData = travelPreferenceSchema.parse(data);
     
-    // Simulate a potential error
-    if (validatedData.destination.toLowerCase() === "error") {
-      throw new Error("Could not generate an itinerary for the selected destination.");
+    // The n8n webhook endpoint
+    const webhookUrl = "https://n8n-ishj.onrender.com/webhook/travel-planner";
+
+    const response = await fetch(webhookUrl, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      // Dates need to be converted to strings for JSON serialization
+      body: JSON.stringify({
+        ...validatedData,
+        dates: {
+          from: validatedData.dates.from.toISOString(),
+          to: validatedData.dates.to.toISOString(),
+        }
+      }),
+    });
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      console.error("n8n webhook error:", errorText);
+      throw new Error(`The travel planning service returned an error: ${response.statusText}`);
     }
     
-    const itinerary = await generateItineraryFlow(validatedData);
+    // The n8n workflow should return the itinerary directly.
+    // The raw response from n8n might be nested under a `data` property,
+    // so we'll try to parse it flexibly.
+    const responseData = await response.json();
+    const itinerary = responseData.data || responseData;
 
+
+    // You might need to add Zod parsing here to validate the itinerary from n8n
+    // For now, we'll trust the source.
     return { success: true, itinerary };
+
   } catch (error) {
     if (error instanceof z.ZodError) {
       console.error(error.issues);
       return { success: false, error: "Invalid form data. Please check your inputs." };
     }
     console.error("Error generating itinerary:", error);
-    return { success: false, error: error instanceof Error ? error.message : "An AI error occurred. Please try again." };
+    return { success: false, error: error instanceof Error ? error.message : "An unknown error occurred. Please try again." };
   }
 }
 
