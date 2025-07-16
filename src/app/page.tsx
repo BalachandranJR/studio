@@ -26,9 +26,10 @@ export default function Home() {
 
     if (result.success) {
       setItinerary(result.itinerary);
+      setError(null); // Explicitly clear any previous errors on success
       toast({
-        title: "Itinerary Created!",
-        description: "Your personalized trip plan is ready.",
+        title: "Itinerary Generated!",
+        description: "Your personalized trip plan is ready to view.",
       });
     } else {
       setError(result.error);
