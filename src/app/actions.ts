@@ -49,17 +49,23 @@ export async function generateItinerary(
     
     const responseData = await response.json();
     
-    // The response might be an array with one element, or a single object.
-    // The itinerary data might be at the top level, or nested under a "data" or "itinerary" key.
-    // This logic attempts to find the itinerary data in a few common places.
+    // This logic robustly finds the itinerary data within the expected webhook response structure.
     let rawItineraryData;
-    if (Array.isArray(responseData) && responseData.length > 0 && responseData[0].itinerary) {
-      rawItineraryData = responseData[0].itinerary;
-    } else if (Array.isArray(responseData) && responseData.length > 0) {
-      rawItineraryData = responseData[0].data || responseData[0];
-    }
-     else {
-      rawItineraryData = responseData.itinerary || responseData.data || responseData;
+    if (Array.isArray(responseData) && responseData.length > 0) {
+      // The response is an array, so we look for the itinerary in the first element.
+      const firstItem = responseData[0];
+      if (firstItem && typeof firstItem === 'object' && 'itinerary' in firstItem) {
+        rawItineraryData = firstItem.itinerary;
+      } else {
+        // Fallback for other possible structures within the array
+        rawItineraryData = firstItem.data || firstItem;
+      }
+    } else if (responseData && typeof responseData === 'object' && 'itinerary' in responseData) {
+        // The response is a single object containing the itinerary
+        rawItineraryData = responseData.itinerary;
+    } else {
+        // Fallback for other possible object structures
+        rawItineraryData = responseData.data || responseData;
     }
 
     if (!rawItineraryData) {
