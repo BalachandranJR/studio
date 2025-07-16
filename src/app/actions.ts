@@ -45,7 +45,8 @@ export async function generateItinerary(
     const responseData = await response.json();
     let itineraryData = responseData.data || responseData;
 
-    // Ensure the start and end dates from the form are on the final itinerary object
+    // Ensure the start date, end date, and destination from the form are on the final itinerary object
+    itineraryData.destination = validatedData.destination;
     itineraryData.startDate = validatedData.dates.from.toISOString();
     itineraryData.endDate = validatedData.dates.to.toISOString();
 
