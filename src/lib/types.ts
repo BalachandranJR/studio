@@ -75,7 +75,7 @@ export type TravelPreference = z.infer<typeof travelPreferenceSchema>;
 export const ActivitySchema = z.object({
   time: z.string().describe("The time of the activity, e.g., '9:00 AM'."),
   description: z.string().describe("A brief description of the activity."),
-  type: z.enum(['food', 'activity', 'transport', 'accommodation', 'attraction']).describe("The category of the activity."),
+  type: z.enum(['food', 'activity', 'transport', 'accommodation', 'attraction', 'wellness', 'shopping']).describe("The category of the activity."),
   icon: z.string().describe("An icon name representing the activity type (e.g., 'food', 'car')."),
 });
 

@@ -5,8 +5,10 @@ import {
   Landmark,
   Palette,
   Plane,
+  Sparkles,
   Train,
   UtensilsCrossed,
+  ShoppingBasket,
   type ComponentType,
 } from 'lucide-react';
 
@@ -19,6 +21,9 @@ export const iconMap: { [key: string]: ComponentType<LucideProps> } = {
   transport: Plane,
   flights: Plane,
   train: Train,
+  wellness: Sparkles,
+  spa: Sparkles,
+  shopping: ShoppingBasket,
 };
 
 export function ItineraryIcon({ name, ...props }: { name: string } & LucideProps) {
