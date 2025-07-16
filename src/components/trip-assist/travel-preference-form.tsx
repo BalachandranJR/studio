@@ -167,7 +167,7 @@ export function TravelPreferenceForm({ onSubmit, isPending }: TravelPreferenceFo
                   <FormControl>
                     <div className="relative">
                       <Users className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                      <Input type="number" placeholder="e.g., 2" {...field} onChange={e => field.onChange(parseInt(e.target.value, 10) || 0)} className="pl-10" />
+                      <Input type="number" placeholder="e.g., 2" {...field} className="pl-10" />
                     </div>
                   </FormControl>
                   <FormMessage />
@@ -333,7 +333,7 @@ export function TravelPreferenceForm({ onSubmit, isPending }: TravelPreferenceFo
                     <FormItem>
                         <FormLabel>Amount</FormLabel>
                         <FormControl>
-                            <Input type="number" placeholder="Approximate budget per person" {...field} onChange={e => field.onChange(parseInt(e.target.value, 10) || 0)} />
+                            <Input type="number" placeholder="Approximate budget per person" {...field} />
                         </FormControl>
                         <FormMessage />
                     </FormItem>
