@@ -17,7 +17,10 @@ export const travelPreferenceSchema = z.object({
   }),
   numPeople: z.coerce.number().int().min(1, "At least one person must be travelling."),
   interests: z.string().min(5, "Please describe your interests.").max(500, "Please keep interests under 500 characters."),
-  budget: z.enum(["economy", "mid-range", "luxury"]),
+  budget: z.object({
+    currency: z.string().min(1, "Please select a currency."),
+    amount: z.coerce.number({invalid_type_error: "Please enter a valid number."}).min(1, "Budget must be at least 1."),
+  }),
   transport: z.enum(["flights", "train", "car"]),
   ageGroups: z.array(z.string()).refine((value) => value.some((item) => item), {
     message: "You have to select at least one age group.",

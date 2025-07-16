@@ -35,6 +35,15 @@ interface TravelPreferenceFormProps {
   isPending: boolean;
 }
 
+const currencies = [
+    { value: 'USD', label: 'USD - US Dollar' },
+    { value: 'EUR', label: 'EUR - Euro' },
+    { value: 'GBP', label: 'GBP - British Pound' },
+    { value: 'JPY', label: 'JPY - Japanese Yen' },
+    { value: 'CAD', label: 'CAD - Canadian Dollar' },
+    { value: 'AUD', label: 'AUD - Australian Dollar' },
+];
+
 export function TravelPreferenceForm({ onSubmit, isPending }: TravelPreferenceFormProps) {
   const form = useForm<TravelPreference>({
     resolver: zodResolver(travelPreferenceSchema),
@@ -42,7 +51,10 @@ export function TravelPreferenceForm({ onSubmit, isPending }: TravelPreferenceFo
       destination: "",
       numPeople: 1,
       interests: "",
-      budget: "mid-range",
+      budget: {
+        currency: 'USD',
+        amount: 1000,
+      },
       transport: "flights",
       ageGroups: [],
     },
@@ -123,8 +135,8 @@ export function TravelPreferenceForm({ onSubmit, isPending }: TravelPreferenceFo
           />
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-          <FormField
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+           <FormField
             control={form.control}
             name="numPeople"
             render={({ field }) => (
@@ -136,31 +148,6 @@ export function TravelPreferenceForm({ onSubmit, isPending }: TravelPreferenceFo
                     <Input type="number" placeholder="e.g., 2" {...field} className="pl-10" />
                   </div>
                 </FormControl>
-                <FormMessage />
-              </FormItem>
-            )}
-          />
-          <FormField
-            control={form.control}
-            name="budget"
-            render={({ field }) => (
-              <FormItem>
-                <FormLabel>Budget</FormLabel>
-                <Select onValueChange={field.onChange} defaultValue={field.value}>
-                  <FormControl>
-                    <div className="relative">
-                      <DollarSign className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                      <SelectTrigger className="pl-10">
-                        <SelectValue placeholder="Select your budget" />
-                      </SelectTrigger>
-                    </div>
-                  </FormControl>
-                  <SelectContent>
-                    <SelectItem value="economy">Economy</SelectItem>
-                    <SelectItem value="mid-range">Mid-range</SelectItem>
-                    <SelectItem value="luxury">Luxury</SelectItem>
-                  </SelectContent>
-                </Select>
                 <FormMessage />
               </FormItem>
             )}
@@ -194,6 +181,45 @@ export function TravelPreferenceForm({ onSubmit, isPending }: TravelPreferenceFo
               </FormItem>
             )}
           />
+        </div>
+
+        <div>
+            <FormLabel>Budget Range</FormLabel>
+            <div className="grid grid-cols-2 gap-4 mt-2">
+                <FormField
+                    control={form.control}
+                    name="budget.currency"
+                    render={({ field }) => (
+                    <FormItem>
+                        <FormLabel className="font-normal text-muted-foreground">Currency</FormLabel>
+                        <Select onValueChange={field.onChange} defaultValue={field.value}>
+                            <FormControl>
+                                <SelectTrigger>
+                                <SelectValue placeholder="Select currency" />
+                                </SelectTrigger>
+                            </FormControl>
+                            <SelectContent>
+                                {currencies.map(c => <SelectItem key={c.value} value={c.value}>{c.label}</SelectItem>)}
+                            </SelectContent>
+                        </Select>
+                        <FormMessage />
+                    </FormItem>
+                    )}
+                />
+                <FormField
+                    control={form.control}
+                    name="budget.amount"
+                    render={({ field }) => (
+                    <FormItem>
+                        <FormLabel className="font-normal text-muted-foreground">Budget Amount</FormLabel>
+                        <FormControl>
+                            <Input type="number" placeholder="Approximate budget" {...field} />
+                        </FormControl>
+                        <FormMessage />
+                    </FormItem>
+                    )}
+                />
+            </div>
         </div>
         
         <FormField
