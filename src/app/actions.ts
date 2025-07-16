@@ -53,9 +53,12 @@ export async function generateItinerary(
     // The itinerary data might be at the top level, or nested under a "data" or "itinerary" key.
     // This logic attempts to find the itinerary data in a few common places.
     let rawItineraryData;
-    if (Array.isArray(responseData) && responseData.length > 0) {
-      rawItineraryData = responseData[0].itinerary || responseData[0].data || responseData[0];
-    } else {
+    if (Array.isArray(responseData) && responseData.length > 0 && responseData[0].itinerary) {
+      rawItineraryData = responseData[0].itinerary;
+    } else if (Array.isArray(responseData) && responseData.length > 0) {
+      rawItineraryData = responseData[0].data || responseData[0];
+    }
+     else {
       rawItineraryData = responseData.itinerary || responseData.data || responseData;
     }
 
@@ -65,9 +68,16 @@ export async function generateItinerary(
 
     // Ensure the start date, end date, and destination from the form are on the final itinerary object
     // This is crucial because the webhook might not return them.
-    rawItineraryData.destination = validatedData.destination;
-    rawItineraryData.startDate = validatedData.dates.from.toISOString();
-    rawItineraryData.endDate = validatedData.dates.to.toISOString();
+    if (!rawItineraryData.destination) {
+      rawItineraryData.destination = validatedData.destination;
+    }
+    if (!rawItineraryData.startDate) {
+      rawItineraryData.startDate = validatedData.dates.from.toISOString();
+    }
+    if (!rawItineraryData.endDate) {
+      rawItineraryData.endDate = validatedData.dates.to.toISOString();
+    }
+    
 
     const itinerary = ItinerarySchema.parse(rawItineraryData);
     
