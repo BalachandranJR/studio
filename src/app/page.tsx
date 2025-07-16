@@ -21,13 +21,14 @@ export default function Home() {
   const { toast } = useToast();
 
   useEffect(() => {
-    if (isSubmitted && !itinerary && !error) {
-      // Generate a unique session ID for this request
-      const newSessionId = Date.now().toString();
-      setSessionId(newSessionId);
-
+    if (isSubmitted && sessionId && !itinerary && !error) {
+      // Ensure this code only runs on the client
+      if (typeof window === "undefined") {
+        return;
+      }
+      
       // Start listening for the itinerary from the server
-      const eventSource = new EventSource(`/api/itinerary/stream?sessionId=${newSessionId}`);
+      const eventSource = new EventSource(`/api/itinerary/stream?sessionId=${sessionId}`);
       
       eventSource.onmessage = (event) => {
         const data = JSON.parse(event.data);
@@ -54,7 +55,7 @@ export default function Home() {
         eventSource.close();
       };
     }
-  }, [isSubmitted, itinerary, error]);
+  }, [isSubmitted, sessionId, itinerary, error]);
 
   const handleFormSubmit = async (data: TravelPreference) => {
     setIsLoading(true);
@@ -66,6 +67,7 @@ export default function Home() {
     const result = await generateItinerary(data);
 
     if (result.success) {
+      setSessionId(result.sessionId);
       setIsSubmitted(true);
       setError(null);
     } else {

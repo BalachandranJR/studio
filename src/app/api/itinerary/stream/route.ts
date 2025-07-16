@@ -1,6 +1,6 @@
 
 import {NextRequest} from 'next/server';
-import {subscribeToItinerary, unsubscribeFromItinerary} from '../webhook/route';
+import {subscribeToItinerary, unsubscribeFromItinerary} from '@/app/api/webhook/route';
 
 export async function GET(request: NextRequest) {
   const sessionId = request.nextUrl.searchParams.get('sessionId');
