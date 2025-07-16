@@ -81,7 +81,7 @@ export const ActivitySchema = z.object({
 
 export const ItineraryDaySchema = z.object({
   day: z.number().describe("The day number of the itinerary, starting from 1."),
-  date: z.string().describe("The date for this day's activities, formatted as 'MMMM do, yyyy'."),
+  date: z.string().describe("The date for this day's activities."),
   activities: z.array(ActivitySchema).describe("A list of activities for the day."),
 });
 
