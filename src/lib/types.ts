@@ -76,7 +76,7 @@ export const ActivitySchema = z.object({
   time: z.string().describe("The time of the activity, e.g., '9:00 AM'."),
   description: z.string().describe("A brief description of the activity."),
   type: z.string().describe("The category of the activity."),
-  icon: z.string().describe("An icon name representing the activity type (e.g., 'food', 'car')."),
+  icon: z.string().describe("An icon name representing the activity type."),
 });
 
 export const ItineraryDaySchema = z.object({

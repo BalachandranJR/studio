@@ -18,6 +18,7 @@ export const iconMap: { [key: string]: ComponentType<LucideProps> } = {
   food: UtensilsCrossed,
   activity: Palette,
   attraction: Landmark,
+  landmark: Landmark, // Added to match webhook response
   transport: Plane,
   flights: Plane,
   train: Train,
