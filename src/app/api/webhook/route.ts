@@ -2,29 +2,8 @@
 import {NextRequest, NextResponse} from 'next/server';
 import {z} from 'zod';
 import {ItinerarySchema, Itinerary} from '@/lib/types';
+import { notifyItineraryReady } from '@/lib/itinerary-events';
 
-// In-memory store for itineraries. In a real app, use a database (e.g., Firestore, Redis, etc.)
-const itineraryCache = new Map<string, Itinerary>();
-const listeners = new Map<string, (data: Itinerary) => void>();
-
-// This function will be called by our SSE route to wait for an itinerary
-export function subscribeToItinerary(sessionId: string, callback: (data: Itinerary) => void) {
-  // If the itinerary is already in the cache, send it immediately
-  if (itineraryCache.has(sessionId)) {
-    const itinerary = itineraryCache.get(sessionId)!;
-    callback(itinerary);
-    itineraryCache.delete(sessionId); // Clean up the cache
-    return;
-  }
-  
-  // Otherwise, store the listener to be called when the itinerary arrives
-  listeners.set(sessionId, callback);
-}
-
-// Function to remove a listener if the client disconnects
-export function unsubscribeFromItinerary(sessionId: string) {
-  listeners.delete(sessionId);
-}
 
 export async function POST(request: NextRequest) {
   const sessionId = request.nextUrl.searchParams.get('sessionId');
@@ -46,19 +25,9 @@ export async function POST(request: NextRequest) {
     }
 
     const itinerary = validation.data;
-
-    // Check if there is a listener waiting for this itinerary
-    if (listeners.has(sessionId)) {
-      const listener = listeners.get(sessionId)!;
-      listener(itinerary); // Send data to the waiting client
-      listeners.delete(sessionId); // Remove the listener
-    } else {
-      // If no listener is present, cache the itinerary for a short time
-      itineraryCache.set(sessionId, itinerary);
-      // Clean up the cache after 5 minutes to prevent memory leaks
-      setTimeout(() => itineraryCache.delete(sessionId), 5 * 60 * 1000); 
-    }
-
+    
+    notifyItineraryReady(sessionId, itinerary);
+    
     return NextResponse.json({success: true});
   } catch (error) {
     console.error(`Error processing webhook for session ${sessionId}:`, error);
