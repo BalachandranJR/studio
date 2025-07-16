@@ -43,14 +43,27 @@ export async function generateItinerary(
     }
     
     const responseData = await response.json();
-    let itineraryData = responseData.data || responseData;
+    
+    // The response might be an array with one element, or a single object.
+    // The itinerary data might be at the top level, or nested under a "data" or "itinerary" key.
+    // This logic attempts to find the itinerary data in a few common places.
+    let rawItineraryData;
+    if (Array.isArray(responseData) && responseData.length > 0) {
+      rawItineraryData = responseData[0].itinerary || responseData[0].data || responseData[0];
+    } else {
+      rawItineraryData = responseData.itinerary || responseData.data || responseData;
+    }
+
+    if (!rawItineraryData) {
+        return { success: false, error: "Invalid data structure received from the travel service. Itinerary data not found." };
+    }
 
     // Ensure the start date, end date, and destination from the form are on the final itinerary object
-    itineraryData.destination = validatedData.destination;
-    itineraryData.startDate = validatedData.dates.from.toISOString();
-    itineraryData.endDate = validatedData.dates.to.toISOString();
+    rawItineraryData.destination = validatedData.destination;
+    rawItineraryData.startDate = validatedData.dates.from.toISOString();
+    rawItineraryData.endDate = validatedData.dates.to.toISOString();
 
-    const itinerary = ItinerarySchema.parse(itineraryData);
+    const itinerary = ItinerarySchema.parse(rawItineraryData);
     
     return { success: true, itinerary };
 
