@@ -48,7 +48,18 @@ export async function generateItinerary(
       throw new Error(`The travel planning service returned an error: ${response.statusText}`);
     }
     
-    const responseData = await response.json();
+    const responseText = await response.text();
+    if (!responseText) {
+        return { success: false, error: "The travel service returned an empty response. Please check your n8n workflow's 'Respond to Webhook' node." };
+    }
+
+    let responseData;
+    try {
+        responseData = JSON.parse(responseText);
+    } catch (e) {
+        console.error("Failed to parse JSON response:", responseText);
+        return { success: false, error: "The travel service returned a response that was not valid JSON." };
+    }
     
     // Your existing response parsing logic...
     let rawItineraryData;
