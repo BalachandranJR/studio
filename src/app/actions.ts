@@ -21,15 +21,20 @@ export async function generateItinerary(
     const validatedData = travelPreferenceSchema.parse(data);
     
     const webhookUrl = process.env.N8N_WEBHOOK_URL;
-    
+    const appUrl = process.env.NEXT_PUBLIC_APP_URL;
+
     if (!webhookUrl) {
       throw new Error("The N8N_WEBHOOK_URL environment variable is not set.");
     }
     
+    if (!appUrl) {
+        throw new Error("The NEXT_PUBLIC_APP_URL environment variable is not set. Please set it to your app's public URL.");
+    }
+
     // Create a unique session ID for this request.
     const sessionId = Date.now().toString();
 
-    const callbackUrl = `${process.env.NEXT_PUBLIC_APP_URL}/api/webhook?sessionId=${sessionId}`;
+    const callbackUrl = `${appUrl}/api/webhook?sessionId=${sessionId}`;
 
     // Fire-and-forget: Send the request but don't wait for the full response.
     fetch(webhookUrl, {
