@@ -64,6 +64,7 @@ export async function generateItinerary(
     }
 
     // Ensure the start date, end date, and destination from the form are on the final itinerary object
+    // This is crucial because the webhook might not return them.
     rawItineraryData.destination = validatedData.destination;
     rawItineraryData.startDate = validatedData.dates.from.toISOString();
     rawItineraryData.endDate = validatedData.dates.to.toISOString();
@@ -74,7 +75,7 @@ export async function generateItinerary(
 
   } catch (error) {
     if (error instanceof z.ZodError) {
-      console.error(error.issues);
+      console.error("Zod validation failed:", error.issues);
       return { success: false, error: "Invalid data received from the travel service. Please check the n8n workflow output." };
     }
     console.error("Error generating itinerary:", error);
