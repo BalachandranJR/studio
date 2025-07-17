@@ -62,8 +62,8 @@ export async function generateItinerary(
       );
     }
 
-    // Assuming n8n sends an immediate acknowledgment
-    await response.json(); 
+    // The n8n workflow sends an immediate acknowledgment. We just need to know it was received.
+    // We don't need to parse the body here. The full itinerary will arrive at the webhook.
 
     return { success: true, sessionId };
     
@@ -72,7 +72,6 @@ export async function generateItinerary(
     if (error instanceof Error) {
         return { success: false, error: error.message };
     }
-    // This is a fallback for non-Error objects being thrown.
     return {
       success: false,
       error: 'An unexpected error occurred. Please try again.',
@@ -112,7 +111,6 @@ export async function reviseItinerary(
       ]
     };
     
-    // Validate the created itinerary against the schema
     const validatedItinerary = ItinerarySchema.parse(revisedItinerary);
 
     return { success: true, itinerary: validatedItinerary };
