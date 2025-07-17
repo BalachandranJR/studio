@@ -72,6 +72,7 @@ export async function generateItinerary(
     if (error instanceof Error) {
         return { success: false, error: error.message };
     }
+    // This is a fallback for non-Error objects being thrown.
     return {
       success: false,
       error: 'An unexpected error occurred. Please try again.',
@@ -88,7 +89,7 @@ export async function reviseItinerary(
   data: { itineraryId: string, feedback: string }
 ): Promise<{ success: true; itinerary: Itinerary } | { success: false; error: string }> {
   try {
-    const { feedback } = revisionSchema.parse(data);
+    const { itineraryId, feedback } = revisionSchema.parse(data);
     
     // Simulate API call delay
     await new Promise(resolve => setTimeout(resolve, 2000));
