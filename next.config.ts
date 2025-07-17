@@ -18,6 +18,10 @@ const nextConfig: NextConfig = {
       },
     ],
   },
+  serverRuntimeConfig: {
+    // Will only be available on the server side
+    APP_URL: process.env.APP_URL,
+  },
 };
 
 export default nextConfig;

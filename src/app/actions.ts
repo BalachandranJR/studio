@@ -3,6 +3,8 @@
 import { v4 as uuidv4 } from 'uuid';
 import { format } from "date-fns";
 import { z } from 'zod';
+import getConfig from 'next/config';
+
 
 import type { Itinerary, TravelPreference } from '@/lib/types';
 import { travelPreferenceSchema, ItinerarySchema } from '@/lib/types';
@@ -20,28 +22,30 @@ export async function generateItinerary(
       );
     }
     
-    const appUrl = process.env.APP_URL;
-    if (!appUrl) {
-        throw new Error('The APP_URL environment variable is not set. This is required for the callback.');
-    }
-    
-    console.log(`Using APP_URL from environment: ${appUrl}`);
+    // Use Next.js runtime config to get the APP_URL
+    const { serverRuntimeConfig } = getConfig();
+    const { APP_URL } = serverRuntimeConfig;
 
-    if (appUrl.includes('localhost') || appUrl.includes('127.0.0.1')) {
-      throw new Error(`The APP_URL ("${appUrl}") is a local address. It must be a public URL that the n8n service can reach. Please update your .env file with your public application URL.`);
+    if (!APP_URL) {
+        throw new Error('The APP_URL is not configured in next.config.js. Please set it in your .env file.');
     }
 
     const sessionId = uuidv4();
-    const callbackUrl = `${appUrl}/api/webhook?sessionId=${sessionId}`;
+    const callbackUrl = `${APP_URL}/api/webhook?sessionId=${sessionId}`;
 
     // Validate the constructed URL
     try {
-      new URL(callbackUrl);
+      const url = new URL(callbackUrl);
+      if (url.hostname === 'localhost' || url.hostname === '127.0.0.1') {
+          console.error(`The APP_URL ("${APP_URL}") resolves to a local address. It must be a public URL that the n8n service can reach.`);
+          throw new Error(`The APP_URL ("${APP_URL}") must be a public URL, not a local one.`);
+      }
     } catch (urlError) {
       console.error('Invalid callback URL constructed:', callbackUrl);
       throw new Error('Failed to construct a valid callback URL. Check your APP_URL environment variable.');
     }
 
+    console.log('Using App URL from config:', APP_URL);
     console.log('Generated Callback URL for n8n:', callbackUrl);
 
     const payload = {
@@ -77,9 +81,7 @@ export async function generateItinerary(
         `The itinerary generation service failed with status: ${response.status} ${response.statusText}.`
       );
     }
-
-    // Since n8n sends an immediate ack, we just confirm it was received.
-    // The actual itinerary will come via the webhook.
+    
     console.log('Successfully sent request to n8n.');
 
     return { success: true, sessionId };
