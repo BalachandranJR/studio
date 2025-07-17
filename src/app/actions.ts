@@ -53,7 +53,7 @@ export async function generateItinerary(
       notifyListeners(sessionId, { itinerary: validatedSample });
       console.log(`SIMULATION: Notified listeners for sessionId: ${sessionId}`);
 
-    }, 5000); // 5-second delay to simulate processing
+    }, 2000); // 2-second delay to simulate processing
 
     return { success: true, sessionId };
     // --- END DEVELOPMENT SIMULATION ---

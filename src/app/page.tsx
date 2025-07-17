@@ -2,7 +2,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { PlaneTakeoff } from "lucide-react";
+import { PlaneTakeoff, Loader2 } from "lucide-react";
 
 import { generateItinerary } from "@/app/actions";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
@@ -107,7 +107,10 @@ export default function Home() {
 
         {isLoading && (
           <div>
-            <p className="text-center text-lg font-semibold mb-4">Generating your itinerary... This may take a moment.</p>
+            <p className="text-center text-lg font-semibold mb-4 flex items-center justify-center gap-2">
+              <Loader2 className="h-5 w-5 animate-spin" />
+              Generating your itinerary... This may take a moment.
+            </p>
             <ItinerarySkeleton />
           </div>
         )}
