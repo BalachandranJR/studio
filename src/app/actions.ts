@@ -3,7 +3,6 @@
 import { v4 as uuidv4 } from 'uuid';
 import { format } from "date-fns";
 import { z } from 'zod';
-import { headers } from "next/headers";
 
 import type { Itinerary, TravelPreference } from '@/lib/types';
 import { travelPreferenceSchema, ItinerarySchema } from '@/lib/types';
@@ -21,15 +20,11 @@ export async function generateItinerary(
       );
     }
     
-    const requestHeaders = headers();
-    const host = requestHeaders.get('host');
-    const protocol = requestHeaders.get('x-forwarded-proto') || 'http';
-    
-    if (!host) {
-         throw new Error('Could not determine the application URL from request headers.');
+    const appUrl = process.env.APP_URL;
+    if (!appUrl) {
+        throw new Error('The APP_URL environment variable is not set. This is required for the callback.');
     }
 
-    const appUrl = `${protocol}://${host}`;
     const sessionId = uuidv4();
     const callbackUrl = `${appUrl}/api/webhook?sessionId=${sessionId}`;
 
@@ -38,7 +33,7 @@ export async function generateItinerary(
       new URL(callbackUrl);
     } catch (urlError) {
       console.error('Invalid callback URL constructed:', callbackUrl);
-      throw new Error('Failed to construct a valid callback URL');
+      throw new Error('Failed to construct a valid callback URL. Check your APP_URL environment variable.');
     }
 
     console.log('Generated Callback URL for n8n:', callbackUrl);
@@ -76,10 +71,6 @@ export async function generateItinerary(
         `The itinerary generation service failed with status: ${response.status} ${response.statusText}.`
       );
     }
-
-    // You can optionally log the success response from n8n if it sends one
-    // const responseData = await response.json();
-    // console.log('Success response from n8n:', responseData);
 
     return { success: true, sessionId };
     
