@@ -26,16 +26,11 @@ export async function generateItinerary(
         throw new Error('The application URL was not provided by the client. Cannot create callback.');
     }
 
-    try {
-        const url = new URL(appUrl);
-        if (url.hostname === 'localhost' || url.hostname === '127.0.0.1') {
-            const errorMessage = `The application URL ("${appUrl}") is a local address. n8n requires a public URL to send the itinerary back. Please use the public URL provided by your hosting environment.`;
-            console.error(errorMessage);
-            throw new Error(errorMessage);
-        }
-    } catch (urlError) {
-         console.error('Invalid appUrl provided by client:', appUrl, urlError);
-         throw new Error('The appUrl provided by the client is not a valid URL.');
+    // A simpler, more reliable check for local addresses.
+    if (appUrl.includes('localhost') || appUrl.includes('127.0.0.1')) {
+      const errorMessage = `The application URL ("${appUrl}") is a local address. n8n requires a public URL to send the itinerary back. Please use the public URL provided by your hosting environment.`;
+      console.error(errorMessage);
+      return { success: false, error: errorMessage };
     }
 
     const sessionId = uuidv4();
