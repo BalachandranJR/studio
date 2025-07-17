@@ -1,13 +1,15 @@
 'use server';
 
 import type { z } from 'zod';
-import type { Itinerary, TravelPreference } from '@/lib/types';
-import { travelPreferenceSchema } from '@/lib/types';
 import { v4 as uuidv4 } from 'uuid';
+import { format } from "date-fns";
+
+import type { Itinerary, TravelPreference } from '@/lib/types';
+import { travelPreferenceSchema, ItinerarySchema } from '@/lib/types';
 
 export async function generateItinerary(
   data: TravelPreference
-): Promise<{ success: true; sessionId: string } | { success: false; error: string }> {
+): Promise<{ success: true; sessionId:string } | { success: false; error: string }> {
   try {
     const validatedData = travelPreferenceSchema.parse(data);
 
@@ -33,7 +35,7 @@ export async function generateItinerary(
         from: validatedData.dates.from.toISOString(),
         to: validatedData.dates.to.toISOString(),
       },
-      callbackUrl: callbackUrl, // Pass the callback URL to n8n
+      callbackUrl: callbackUrl,
     };
 
     const response = await fetch(webhookUrl, {
@@ -50,8 +52,6 @@ export async function generateItinerary(
       );
     }
 
-    // The initial response from n8n is just an acknowledgment.
-    // The actual itinerary will be sent to the callbackUrl.
     await response.json();
 
     return { success: true, sessionId };
@@ -65,5 +65,48 @@ export async function generateItinerary(
       success: false,
       error: 'An unexpected error occurred. Please try again.',
     };
+  }
+}
+
+const revisionSchema = z.object({
+  itineraryId: z.string(),
+  feedback: z.string().min(10, "Please provide more detailed feedback."),
+});
+
+export async function reviseItinerary(
+  data: { itineraryId: string, feedback: string }
+): Promise<{ success: true; itinerary: Itinerary } | { success: false; error: string }> {
+  try {
+    const { feedback } = revisionSchema.parse(data);
+    
+    await new Promise(resolve => setTimeout(resolve, 2000));
+
+    const revisedItinerary: Itinerary = {
+      id: new Date().getTime().toString(),
+      destination: "Revised Destination",
+      startDate: new Date().toISOString(),
+      endDate: new Date(new Date().setDate(new Date().getDate() + 1)).toISOString(),
+      days: [
+        {
+          day: 1,
+          date: format(new Date(), "MMMM do, yyyy"),
+          activities: [
+            { time: "10:00 AM", description: `Revision based on feedback: ${feedback}`, type: "activity", icon: "edit" },
+            { time: "1:00 PM", description: "A new lunch spot based on your request.", type: "food", icon: "food" },
+          ]
+        }
+      ]
+    };
+    
+    const validatedItinerary = ItinerarySchema.parse(revisedItinerary);
+
+    return { success: true, itinerary: validatedItinerary };
+
+  } catch (error) {
+     if (error instanceof z.ZodError) {
+      console.error("Zod validation error on revised itinerary:", error.flatten());
+      return { success: false, error: "The revised itinerary data format is invalid." };
+    }
+    return { success: false, error: error instanceof Error ? error.message : "An unknown error occurred during revision." };
   }
 }
