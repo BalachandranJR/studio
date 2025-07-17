@@ -3,7 +3,6 @@
 import { v4 as uuidv4 } from 'uuid';
 import { format } from "date-fns";
 import { z } from 'zod';
-import { headers } from "next/headers";
 
 import type { Itinerary, TravelPreference } from '@/lib/types';
 import { ItinerarySchema, travelPreferenceSchema } from '@/lib/types';
@@ -20,33 +19,29 @@ export async function generateItinerary(
         'The N8N_WEBHOOK_URL environment variable is not set. Please add it to your .env file.'
       );
     }
-
-    const requestHeaders = headers();
-    const host = requestHeaders.get('host');
-    const protocol = requestHeaders.get('x-forwarded-proto') || 'http';
-
-    if (!host) {
-         throw new Error('Could not determine the application URL from request headers.');
+    
+    const appUrl = process.env.APP_URL;
+    if (!appUrl) {
+        throw new Error('The APP_URL environment variable is not set. Please add it to your .env file and set it to your public application URL.');
     }
 
-    const appUrl = `${protocol}://${host}`;
-    
-    // This check prevents sending localhost URLs to the n8n service
     try {
         const url = new URL(appUrl);
         if (url.hostname === 'localhost' || url.hostname === '127.0.0.1') {
-            console.error(`The constructed appUrl ("${appUrl}") resolves to a local address. It must be a public URL that the n8n service can reach.`);
-            throw new Error(`Invalid callback URL format: The URL must be public, not local.`);
+            const errorMessage = `The APP_URL ("${appUrl}") is a local address. It must be a public URL that the n8n service can reach. Please find your public URL (e.g., in the "Previews" panel of your IDE) and set it in your .env file.`;
+            console.error(errorMessage);
+            throw new Error(errorMessage);
         }
     } catch (urlError) {
-         console.error('Invalid appUrl constructed:', appUrl);
-         throw new Error('Failed to parse the appUrl. Please check your hosting environment.');
+         console.error('Invalid APP_URL constructed:', appUrl);
+         throw new Error('The APP_URL in your .env file is not a valid URL. Please check it.');
     }
+
 
     const sessionId = uuidv4();
     const callbackUrl = `${appUrl}/api/webhook?sessionId=${sessionId}`;
     
-    console.log('Using constructed App URL:', appUrl);
+    console.log('Using App URL from .env:', appUrl);
     console.log('Generated Callback URL for n8n:', callbackUrl);
 
     const payload = {
