@@ -26,24 +26,30 @@ export async function generateItinerary(
         throw new Error('The application URL was not provided by the client. Cannot create callback.');
     }
 
+    // Ensure the URL has a protocol. Protocol-relative URLs (e.g., //example.com) will fail in n8n.
+    let correctedAppUrl = appUrl;
+    if (correctedAppUrl.startsWith('//')) {
+        correctedAppUrl = 'https:' + correctedAppUrl;
+    }
+
     try {
-        const url = new URL(appUrl);
-        if (url.hostname === 'localhost' || url.hostname === '127.0.0.1') {
-            throw new Error("The application URL is a localhost address. n8n requires a public URL to send the itinerary back.");
+        const url = new URL(correctedAppUrl);
+        if (url.hostname.includes('localhost') || url.hostname.includes('127.0.0.1')) {
+            const errorMessage = "The application URL is a localhost address. n8n requires a public URL to send the itinerary back.";
+            console.error(errorMessage);
+            return { success: false, error: errorMessage };
         }
-    } catch (e: any) {
-        const errorMessage = e instanceof Error && e.message.includes('localhost')
-            ? e.message
-            : `Failed to parse the appUrl ("${appUrl}"). Please check your hosting environment.`;
-        console.error(errorMessage);
+    } catch (e) {
+        const errorMessage = `Invalid callback URL format: ${correctedAppUrl}`;
+        console.error(errorMessage, e);
         return { success: false, error: errorMessage };
     }
 
 
     const sessionId = uuidv4();
-    const callbackUrl = `${appUrl}/api/webhook?sessionId=${sessionId}`;
+    const callbackUrl = `${correctedAppUrl}/api/webhook?sessionId=${sessionId}`;
     
-    console.log('Using App URL from client:', appUrl);
+    console.log('Using Corrected App URL from client:', correctedAppUrl);
     console.log('Generated Callback URL for n8n:', callbackUrl);
 
     const payload = {
