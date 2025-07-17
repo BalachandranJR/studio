@@ -14,16 +14,16 @@ export async function generateItinerary(
   try {
     const validatedData = travelPreferenceSchema.parse(data);
 
-    const webhookUrl = process.env.N8N_WEBHOOK_URL;
+    const webhookUrl = process.env.NEXT_PUBLIC_N8N_WEBHOOK_URL;
     if (!webhookUrl) {
       throw new Error(
-        'The N8N_WEBHOOK_URL environment variable is not set. Please add it to your .env file.'
+        'The NEXT_PUBLIC_N8N_WEBHOOK_URL environment variable is not set. Please add it to your .env file.'
       );
     }
     
-    const appUrl = process.env.APP_URL;
+    const appUrl = process.env.NEXT_PUBLIC_APP_URL;
     if (!appUrl) {
-        throw new Error('The APP_URL environment variable is not set. This is required for the callback.'
+        throw new Error('The NEXT_PUBLIC_APP_URL environment variable is not set. This is required for the callback.'
         );
     }
 
@@ -62,9 +62,6 @@ export async function generateItinerary(
       );
     }
 
-    // The n8n workflow sends an immediate acknowledgment. We just need to know it was received.
-    // We don't need to parse the body here. The full itinerary will arrive at the webhook.
-
     return { success: true, sessionId };
     
   } catch (error) {
@@ -90,10 +87,8 @@ export async function reviseItinerary(
   try {
     const { itineraryId, feedback } = revisionSchema.parse(data);
     
-    // Simulate API call delay
     await new Promise(resolve => setTimeout(resolve, 2000));
 
-    // Dummy revised itinerary data
     const revisedItinerary: Itinerary = {
       id: new Date().getTime().toString(),
       destination: "Revised Destination",
