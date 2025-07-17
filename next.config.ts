@@ -1,4 +1,3 @@
-import 'dotenv/config';
 import type {NextConfig} from 'next';
 
 const nextConfig: NextConfig = {
@@ -18,10 +17,6 @@ const nextConfig: NextConfig = {
         pathname: '/**',
       },
     ],
-  },
-  serverRuntimeConfig: {
-    // Will only be available on the server side
-    APP_URL: process.env.APP_URL,
   },
 };
 
