@@ -105,7 +105,7 @@ export function TravelPreferenceForm({ onSubmit, isPending }: TravelPreferenceFo
                 control={form.control}
                 name="dates"
                 render={({ field }) => (
-                  <FormItem className="flex flex-col">
+                  <FormItem>
                     <FormLabel>Travel Dates</FormLabel>
                     <Popover>
                       <PopoverTrigger asChild>
