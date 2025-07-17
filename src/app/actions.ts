@@ -28,11 +28,11 @@ export async function generateItinerary(
 
     // Function to fix protocol-relative URLs and ensure a protocol exists.
     function normalizeUrl(url: string): string {
-      // Handle protocol-relative URLs
+      // Handle protocol-relative URLs like "//domain.com"
       if (url.startsWith('//')) {
         return `https:${url}`;
       }
-      // Handle URLs without a protocol
+      // Handle URLs without any protocol like "domain.com"
       if (!url.startsWith('http://') && !url.startsWith('https://')) {
         return `https://${url}`;
       }
