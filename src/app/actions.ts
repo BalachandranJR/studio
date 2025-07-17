@@ -5,7 +5,6 @@ import { z } from "zod";
 import { format } from "date-fns";
 import type { Itinerary, TravelPreference } from "@/lib/types";
 import { ItinerarySchema, travelPreferenceSchema } from "@/lib/types";
-import 'dotenv/config'
 
 // In-memory storage for itinerary results (replace with database in production)
 const itineraryResults = new Map<string, {
@@ -14,18 +13,6 @@ const itineraryResults = new Map<string, {
   error?: string;
   timestamp: number;
 }>();
-
-// Cleanup old results every 10 minutes
-setInterval(() => {
-  const now = Date.now();
-  const TEN_MINUTES = 10 * 60 * 1000;
-  
-  for (const [key, value] of itineraryResults.entries()) {
-    if (now - value.timestamp > TEN_MINUTES) {
-      itineraryResults.delete(key);
-    }
-  }
-}, 10 * 60 * 1000);
 
 const revisionSchema = z.object({
   itineraryId: z.string(),
@@ -81,9 +68,14 @@ export async function generateItinerary(
     
     const webhookUrl = process.env.N8N_WEBHOOK_URL;
     if (!webhookUrl) {
-      throw new Error("The N8N_WEBHOOK_URL environment variable is not set.");
+      throw new Error("The N8N_WEBHOOK_URL environment variable is not set. Please add it to your .env file.");
     }
     
+    const appUrl = process.env.APP_URL;
+    if (!appUrl) {
+        throw new Error("The APP_URL environment variable is not set. Please add it to your .env file.");
+    }
+
     const sessionId = Date.now().toString();
     
     // Store initial processing state
@@ -95,8 +87,7 @@ export async function generateItinerary(
     // In your n8n workflow, you will need a final "Respond to Webhook" node
     // that POSTs back to your application's `/api/webhook` endpoint.
     // That endpoint will call the `completeItinerary` function above.
-    const hardcodedAppUrl = "https://6000-firebase-studio-1752627865956.cluster-ancjwrkgr5dvux4qug5rbzyc2y.cloudworkstations.dev/";
-    const callbackUrl = `${hardcodedAppUrl}api/webhook`;
+    const callbackUrl = `${appUrl}/api/webhook`;
 
     const payload = {
       sessionId,
