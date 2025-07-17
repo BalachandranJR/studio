@@ -1,36 +1,31 @@
 
 import {NextRequest, NextResponse} from 'next/server';
-import {z} from 'zod';
-import {ItinerarySchema, Itinerary} from '@/lib/types';
-import { notifyItineraryReady } from '@/lib/itinerary-events';
+import { completeItinerary } from '@/app/actions';
 
-
+// This endpoint is now called by n8n when the workflow is complete.
 export async function POST(request: NextRequest) {
-  const sessionId = request.nextUrl.searchParams.get('sessionId');
-
-  if (!sessionId) {
-    return NextResponse.json({success: false, error: 'Session ID is required'}, {status: 400});
-  }
-
   try {
-    const json = await request.json();
-    console.log(`Received itinerary for session ${sessionId}:`, JSON.stringify(json, null, 2));
+    const body = await request.json();
     
-    const validation = ItinerarySchema.safeParse(json);
+    // The sessionId and the final itinerary should be in the body
+    // that n8n POSTs back to this endpoint.
+    const { sessionId, ...result } = body;
 
-    if (!validation.success) {
-      console.error('Invalid itinerary data received from n8n:', validation.error.issues);
-      // In a real app, you might want to notify the client of the error
-      return NextResponse.json({success: false, error: 'Invalid data format'}, {status: 400});
+    if (!sessionId) {
+      return NextResponse.json({success: false, error: 'Session ID is required in the callback payload'}, {status: 400});
     }
 
-    const itinerary = validation.data;
+    // Pass the data to the server action to update the status in our in-memory store.
+    const updateResult = await completeItinerary(sessionId, result);
+
+    if (updateResult.success) {
+      return NextResponse.json({success: true});
+    } else {
+      return NextResponse.json({success: false, error: updateResult.error}, {status: 500});
+    }
     
-    notifyItineraryReady(sessionId, itinerary);
-    
-    return NextResponse.json({success: true});
   } catch (error) {
-    console.error(`Error processing webhook for session ${sessionId}:`, error);
+    console.error(`Error processing webhook:`, error);
     const errorMessage = error instanceof Error ? error.message : 'Unknown error';
     return NextResponse.json({success: false, error: errorMessage}, {status: 500});
   }

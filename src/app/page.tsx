@@ -1,10 +1,10 @@
 
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { PlaneTakeoff } from "lucide-react";
 
-import { generateItinerary } from "@/app/actions";
+import { generateItinerary, checkItineraryStatus } from "@/app/actions";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { ItineraryDisplay, ItinerarySkeleton } from "@/components/trip-assist/itinerary-display";
@@ -12,78 +12,98 @@ import { TravelPreferenceForm } from "@/components/trip-assist/travel-preference
 import type { Itinerary, TravelPreference } from "@/lib/types";
 import { useToast } from "@/hooks/use-toast";
 
+const POLLING_INTERVAL = 3000; // 3 seconds
+
 export default function Home() {
   const [itinerary, setItinerary] = useState<Itinerary | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [isSubmitted, setIsSubmitted] = useState(false);
   const [sessionId, setSessionId] = useState<string | null>(null);
   const { toast } = useToast();
+  
+  // Use a ref to hold the interval ID to prevent re-renders from affecting it
+  const intervalRef = useRef<NodeJS.Timeout | null>(null);
 
   useEffect(() => {
-    if (isSubmitted && sessionId && !itinerary && !error) {
-      // Ensure this code only runs on the client
-      if (typeof window === "undefined") {
+    // Cleanup interval on component unmount
+    return () => {
+      if (intervalRef.current) {
+        clearInterval(intervalRef.current);
+      }
+    };
+  }, []);
+
+  const stopPolling = () => {
+    if (intervalRef.current) {
+      clearInterval(intervalRef.current);
+      intervalRef.current = null;
+    }
+  };
+
+  const startPolling = (currentSessionId: string) => {
+    // Stop any existing polling before starting a new one
+    stopPolling();
+    
+    intervalRef.current = setInterval(async () => {
+      if (!currentSessionId) {
+        stopPolling();
         return;
       }
-      
-      // Start listening for the itinerary from the server
-      const eventSource = new EventSource(`/api/itinerary/stream?sessionId=${sessionId}`);
-      
-      eventSource.onmessage = (event) => {
-        const data = JSON.parse(event.data);
-        if (data.error) {
-          setError(data.error);
-          setIsLoading(false);
-          eventSource.close();
-        } else {
-          setItinerary(data as Itinerary);
+
+      const result = await checkItineraryStatus(currentSessionId);
+
+      switch (result.status) {
+        case 'completed':
+          setItinerary(result.data as Itinerary);
           setIsLoading(false);
           setError(null);
-          eventSource.close();
-        }
-      };
-
-      eventSource.onerror = () => {
-        setError("Connection to the server was lost. Please try again.");
-        setIsLoading(false);
-        eventSource.close();
-      };
-
-      // Clean up the connection when the component unmounts or the state changes
-      return () => {
-        eventSource.close();
-      };
-    }
-  }, [isSubmitted, sessionId, itinerary, error]);
+          setSessionId(null);
+          stopPolling();
+          break;
+        case 'error':
+          setError(result.error || "An unknown error occurred.");
+          setIsLoading(false);
+          setSessionId(null);
+          stopPolling();
+          break;
+        case 'processing':
+          // Still processing, do nothing
+          break;
+        case 'not_found':
+        default:
+          setError("Could not find the itinerary session. It may have expired.");
+          setIsLoading(false);
+          setSessionId(null);
+          stopPolling();
+          break;
+      }
+    }, POLLING_INTERVAL);
+  };
 
   const handleFormSubmit = async (data: TravelPreference) => {
     setIsLoading(true);
     setError(null);
     setItinerary(null);
-    setIsSubmitted(false); // Reset submission state
-    setSessionId(null); // Reset session ID
+    setSessionId(null);
 
     const result = await generateItinerary(data);
 
     if (result.success) {
       setSessionId(result.sessionId);
-      setIsSubmitted(true);
-      setError(null);
+      startPolling(result.sessionId); // Start polling after getting a session ID
     } else {
       setError(result.error);
       setIsLoading(false);
     }
-    // We keep isLoading true here, because we are now waiting for the SSE response
   };
   
   const resetForm = () => {
-    setIsSubmitted(false);
-    setError(null);
+    stopPolling(); // Make sure to stop polling when resetting
     setItinerary(null);
     setIsLoading(false);
+    setError(null);
     setSessionId(null);
-  }
+  };
 
   return (
     <main className="container mx-auto px-4 py-8 md:py-12">
@@ -100,14 +120,14 @@ export default function Home() {
       </header>
 
       <div className="max-w-4xl mx-auto">
-        {!itinerary && !isLoading && (
+        {!isLoading && !itinerary && (
           <Card>
             <CardHeader>
               <CardTitle className="font-headline text-2xl">Plan Your Next Adventure</CardTitle>
               <CardDescription>Fill out the form below to generate a custom itinerary.</CardDescription>
             </CardHeader>
             <CardContent>
-              <TravelPreferenceForm onSubmit={handleFormSubmit} isPending={isLoading && !isSubmitted} />
+              <TravelPreferenceForm onSubmit={handleFormSubmit} isPending={isLoading} />
             </CardContent>
           </Card>
         )}
