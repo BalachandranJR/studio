@@ -34,7 +34,7 @@ export async function generateItinerary(
             throw new Error(errorMessage);
         }
     } catch (urlError) {
-         console.error('Invalid appUrl provided by client:', appUrl);
+         console.error('Invalid appUrl provided by client:', appUrl, urlError);
          throw new Error('The appUrl provided by the client is not a valid URL.');
     }
 
