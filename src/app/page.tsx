@@ -100,17 +100,13 @@ export default function Home() {
     }
   };
   
-  const resetForm = () => {
+  const resetApp = () => {
     setItinerary(null);
     setIsLoading(false);
     setError(null);
     setSessionId(null);
   };
   
-  const showForm = () => {
-    setItinerary(null);
-  }
-
   return (
     <main className="container mx-auto px-4 py-8 md:py-12">
       <header className="text-center mb-12">
@@ -155,7 +151,7 @@ export default function Home() {
               <AlertDescription>{error}</AlertDescription>
             </Alert>
             <Button
-              onClick={resetForm}
+              onClick={resetApp}
               variant="link"
             >
               Try again
@@ -165,15 +161,7 @@ export default function Home() {
 
         {itinerary && !isLoading && (
           <div className="mt-8">
-            <ItineraryDisplay itinerary={itinerary} setItinerary={setItinerary} />
-            <div className="text-center mt-8 no-print">
-               <Button
-                  onClick={showForm}
-                  variant="link"
-                >
-                  Start a new plan
-                </Button>
-            </div>
+            <ItineraryDisplay itinerary={itinerary} onRestart={resetApp} />
           </div>
         )}
       </div>

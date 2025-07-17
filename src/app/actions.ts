@@ -2,11 +2,10 @@
 'use server';
 
 import { v4 as uuidv4 } from 'uuid';
-import { format } from "date-fns";
 import { z } from 'zod';
 
-import type { Itinerary, TravelPreference } from '@/lib/types';
-import { ItinerarySchema, travelPreferenceSchema } from '@/lib/types';
+import type { TravelPreference } from '@/lib/types';
+import { travelPreferenceSchema } from '@/lib/types';
 
 export async function generateItinerary(
   data: TravelPreference,
@@ -47,51 +46,11 @@ export async function generateItinerary(
 
   } catch (error) {
     console.error('Error in generateItinerary action:', error);
+    if (error instanceof z.ZodError) {
+        console.error("Zod validation error on travel preference:", error.flatten());
+        return { success: false, error: "The travel preference data format is invalid." };
+    }
     const errorMessage = error instanceof Error ? error.message : 'An unexpected error occurred.';
     return { success: false, error: errorMessage };
-  }
-}
-
-const revisionSchema = z.object({
-  itineraryId: z.string(),
-  feedback: z.string().min(10, "Please provide more detailed feedback."),
-});
-
-export async function reviseItinerary(
-  data: { itineraryId: string, feedback: string }
-): Promise<{ success: true; itinerary: Itinerary } | { success: false; error: string }> {
-  try {
-    const { itineraryId, feedback } = revisionSchema.parse(data);
-    
-    // This is placeholder logic for a future feature.
-    await new Promise(resolve => setTimeout(resolve, 2000));
-
-    const revisedItinerary: Itinerary = {
-      id: new Date().getTime().toString(),
-      destination: "Revised Destination",
-      startDate: new Date().toISOString(),
-      endDate: new Date(new Date().setDate(new Date().getDate() + 1)).toISOString(),
-      days: [
-        {
-          day: 1,
-          date: format(new Date(), "MMMM do, yyyy"),
-          activities: [
-            { time: "10:00 AM", description: `Revision based on feedback: ${feedback}`, type: "activity", icon: "edit" },
-            { time: "1:00 PM", description: "A new lunch spot based on your request.", type: "food", icon: "food" },
-          ]
-        }
-      ]
-    };
-    
-    const validatedItinerary = ItinerarySchema.parse(revisedItinerary);
-
-    return { success: true, itinerary: validatedItinerary };
-
-  } catch (error) {
-     if (error instanceof z.ZodError) {
-      console.error("Zod validation error on revised itinerary:", error.flatten());
-      return { success: false, error: "The revised itinerary data format is invalid." };
-    }
-    return { success: false, error: error instanceof Error ? error.message : "An unknown error occurred during revision." };
   }
 }

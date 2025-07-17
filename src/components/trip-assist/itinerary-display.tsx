@@ -1,13 +1,9 @@
+
 "use client";
 
-import { useState } from "react";
 import { format, parseISO } from "date-fns";
-import { Download, Edit, Loader2, Calendar as CalendarIcon, Clock, Briefcase } from "lucide-react";
-import { useForm } from "react-hook-form";
-import { zodResolver } from "@hookform/resolvers/zod";
-import { z } from "zod";
+import { Download, RotateCcw, Calendar as CalendarIcon, Clock } from "lucide-react";
 
-import { reviseItinerary } from "@/app/actions";
 import { ItineraryIcon } from "@/components/icons";
 import {
   Accordion,
@@ -25,70 +21,17 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-  DialogTrigger,
-  DialogClose
-} from "@/components/ui/dialog";
-import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Textarea } from "@/components/ui/textarea";
-import { useToast } from "@/hooks/use-toast";
 import type { Itinerary } from "@/lib/types";
 
 interface ItineraryDisplayProps {
   itinerary: Itinerary;
-  setItinerary: React.Dispatch<React.SetStateAction<Itinerary | null>>;
+  onRestart: () => void;
 }
 
-const revisionFormSchema = z.object({
-  feedback: z.string().min(10, "Please provide at least 10 characters of feedback."),
-});
-
-type RevisionFormValues = z.infer<typeof revisionFormSchema>;
-
-export function ItineraryDisplay({ itinerary, setItinerary }: ItineraryDisplayProps) {
-  const [isRevising, setIsRevising] = useState(false);
-  const [isRevisionOpen, setIsRevisionOpen] = useState(false);
-  const { toast } = useToast();
-
+export function ItineraryDisplay({ itinerary, onRestart }: ItineraryDisplayProps) {
   const handleDownload = () => {
     window.print();
-  };
-  
-  const form = useForm<RevisionFormValues>({
-    resolver: zodResolver(revisionFormSchema),
-    defaultValues: { feedback: "" },
-  });
-
-  const onRevisionSubmit = async (values: RevisionFormValues) => {
-    setIsRevising(true);
-    const result = await reviseItinerary({
-      itineraryId: itinerary.id,
-      feedback: values.feedback,
-    });
-
-    if (result.success) {
-      setItinerary(result.itinerary);
-      toast({
-        title: "Itinerary Revised!",
-        description: "Your itinerary has been updated based on your feedback.",
-      });
-      setIsRevisionOpen(false);
-      form.reset();
-    } else {
-      toast({
-        variant: "destructive",
-        title: "Revision Failed",
-        description: result.error,
-      });
-    }
-    setIsRevising(false);
   };
 
   return (
@@ -140,52 +83,10 @@ export function ItineraryDisplay({ itinerary, setItinerary }: ItineraryDisplayPr
             </Accordion>
           </CardContent>
           <CardFooter className="flex-col md:flex-row gap-2 items-center justify-end no-print">
-            <Dialog open={isRevisionOpen} onOpenChange={setIsRevisionOpen}>
-              <DialogTrigger asChild>
-                <Button variant="outline">
-                  <Edit className="mr-2 h-4 w-4" />
-                  Request Revision
-                </Button>
-              </DialogTrigger>
-              <DialogContent>
-                <DialogHeader>
-                  <DialogTitle>Request a Revision</DialogTitle>
-                  <DialogDescription>
-                    Let us know what you'd like to change, and we'll generate a new version of your itinerary.
-                  </DialogDescription>
-                </DialogHeader>
-                <Form {...form}>
-                  <form onSubmit={form.handleSubmit(onRevisionSubmit)} id="revision-form">
-                    <FormField
-                      control={form.control}
-                      name="feedback"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>Your Feedback</FormLabel>
-                          <FormControl>
-                            <Textarea
-                              placeholder="e.g., 'Could we add more outdoor activities on Day 2?' or 'I'd prefer Italian restaurants.'"
-                              {...field}
-                              rows={5}
-                            />
-                          </FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-                  </form>
-                </Form>
-                <DialogFooter>
-                  <DialogClose asChild>
-                    <Button variant="ghost" disabled={isRevising}>Cancel</Button>
-                  </DialogClose>
-                  <Button type="submit" form="revision-form" disabled={isRevising}>
-                    {isRevising && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                    Submit Revision
-                  </Button>
-                </DialogFooter>
-              </DialogContent>
-            </Dialog>
+            <Button variant="outline" onClick={onRestart}>
+              <RotateCcw className="mr-2 h-4 w-4" />
+              Start New Plan
+            </Button>
             <Button onClick={handleDownload}>
               <Download className="mr-2 h-4 w-4" />
               Download
