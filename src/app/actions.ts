@@ -25,14 +25,16 @@ export async function generateItinerary(
     const requestHeaders = headers();
     const host = requestHeaders.get('host');
     const protocol = requestHeaders.get('x-forwarded-proto') || 'http';
-    const appUrl = `${protocol}://${host}`;
     
     if (!host) {
          throw new Error('Could not determine the application URL from request headers.');
     }
 
+    const appUrl = `${protocol}://${host}`;
     const sessionId = uuidv4();
     const callbackUrl = `${appUrl}/api/webhook?sessionId=${sessionId}`;
+
+    console.log('Generated Callback URL for n8n:', callbackUrl);
 
     const payload = {
       destination: validatedData.destination,
