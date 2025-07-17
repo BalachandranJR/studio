@@ -1,3 +1,4 @@
+
 'use server';
 
 import { v4 as uuidv4 } from 'uuid';
@@ -8,7 +9,8 @@ import type { Itinerary, TravelPreference } from '@/lib/types';
 import { ItinerarySchema, travelPreferenceSchema } from '@/lib/types';
 
 export async function generateItinerary(
-  data: TravelPreference
+  data: TravelPreference,
+  appUrl: string
 ): Promise<{ success: true; sessionId: string } | { success: false; error: string }> {
   try {
     const validatedData = travelPreferenceSchema.parse(data);
@@ -20,28 +22,26 @@ export async function generateItinerary(
       );
     }
     
-    const appUrl = process.env.APP_URL;
     if (!appUrl) {
-        throw new Error('The APP_URL environment variable is not set. Please add it to your .env file and set it to your public application URL.');
+        throw new Error('The application URL was not provided by the client. Cannot create callback.');
     }
 
     try {
         const url = new URL(appUrl);
         if (url.hostname === 'localhost' || url.hostname === '127.0.0.1') {
-            const errorMessage = `The APP_URL ("${appUrl}") is a local address. It must be a public URL that the n8n service can reach. Please find your public URL (e.g., in the "Previews" panel of your IDE) and set it in your .env file.`;
+            const errorMessage = `The application URL ("${appUrl}") is a local address. n8n requires a public URL to send the itinerary back. Please use the public URL provided by your hosting environment.`;
             console.error(errorMessage);
             throw new Error(errorMessage);
         }
     } catch (urlError) {
-         console.error('Invalid APP_URL constructed:', appUrl);
-         throw new Error('The APP_URL in your .env file is not a valid URL. Please check it.');
+         console.error('Invalid appUrl provided by client:', appUrl);
+         throw new Error('The appUrl provided by the client is not a valid URL.');
     }
-
 
     const sessionId = uuidv4();
     const callbackUrl = `${appUrl}/api/webhook?sessionId=${sessionId}`;
     
-    console.log('Using App URL from .env:', appUrl);
+    console.log('Using App URL from client:', appUrl);
     console.log('Generated Callback URL for n8n:', callbackUrl);
 
     const payload = {

@@ -57,8 +57,11 @@ export default function Home() {
     setError(null);
     setItinerary(null);
     setSessionId(null);
+    
+    // Get the public URL from the client-side window object
+    const appUrl = window.location.origin;
 
-    const result = await generateItinerary(data);
+    const result = await generateItinerary(data, appUrl);
 
     if (result.success) {
       setSessionId(result.sessionId);
