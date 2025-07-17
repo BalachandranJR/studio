@@ -25,10 +25,7 @@ export function notifyListeners(sessionId: string, data: { itinerary?: Itinerary
   const sessionListeners = listeners.get(sessionId);
   if (sessionListeners) {
     sessionListeners.forEach(listener => listener(data));
-    // Clean up listeners after a short delay to prevent race conditions
-    // where the client disconnects before receiving the message.
-    setTimeout(() => {
-        listeners.delete(sessionId);
-    }, 1000);
+    // Immediately clean up listeners for this session after notifying.
+    listeners.delete(sessionId);
   }
 }
