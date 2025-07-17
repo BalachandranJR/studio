@@ -4,6 +4,8 @@ import { ItinerarySchema } from '@/lib/types';
 import { notifyListeners } from '@/lib/itinerary-events';
 import { z } from 'zod';
 
+export const dynamic = 'force-dynamic'; // This is the important change
+
 export async function POST(request: NextRequest) {
   const searchParams = request.nextUrl.searchParams;
   const sessionId = searchParams.get('sessionId');
