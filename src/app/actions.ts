@@ -7,7 +7,6 @@ import { z } from 'zod';
 
 import type { Itinerary, TravelPreference } from '@/lib/types';
 import { ItinerarySchema, travelPreferenceSchema } from '@/lib/types';
-import { notifyListeners } from '@/lib/itinerary-events';
 
 export async function generateItinerary(
   data: TravelPreference,
@@ -16,53 +15,35 @@ export async function generateItinerary(
   try {
     const validatedData = travelPreferenceSchema.parse(data);
     const sessionId = uuidv4();
+    const n8nWebhookUrl = process.env.N8N_WEBHOOK_URL;
 
-    // --- DEVELOPMENT SIMULATION ---
-    // This block simulates the n8n workflow for local development 
-    // by creating a mock itinerary and notifying the front end directly.
-    console.log("SIMULATION: Starting 2-second mock response generation.");
+    if (!n8nWebhookUrl) {
+      console.error('N8N_WEBHOOK_URL is not set in environment variables.');
+      return { success: false, error: 'The application is not configured to connect to the itinerary generation service. Please contact support.' };
+    }
 
-    setTimeout(() => {
-      const sampleItinerary: Itinerary = {
-        id: `sim-${new Date().getTime()}`,
-        destination: validatedData.destination,
-        startDate: validatedData.dates.from.toISOString(),
-        endDate: validatedData.dates.to.toISOString(),
-        days: [
-          {
-            day: 1,
-            date: format(validatedData.dates.from, "MMMM do, yyyy"),
-            activities: [
-              { time: "9:00 AM", description: "Arrive and check into your simulated hotel.", type: "transport", icon: "plane" },
-              { time: "1:00 PM", description: "Lunch at a fantastic simulated local restaurant.", type: "food", icon: "utensils-crossed" },
-              { time: "3:00 PM", description: `Explore the area related to your interest in: ${validatedData.interests[0]}.`, type: "activity", icon: "palette" },
-            ]
-          },
-          {
-            day: 2,
-            date: format(new Date(validatedData.dates.from).setDate(validatedData.dates.from.getDate() + 1), "MMMM do, yyyy"),
-            activities: [
-              { time: "10:00 AM", description: "A simulated activity based on your preferences.", type: "activity", icon: "sparkles" },
-              { time: "7:00 PM", description: "Simulated dinner and evening entertainment.", type: "food", icon: "utensils-crossed" },
-            ]
-          }
-        ]
-      };
-      
-      try {
-        const validatedSample = ItinerarySchema.parse(sampleItinerary);
-        notifyListeners(sessionId, { itinerary: validatedSample });
-        console.log(`SIMULATION: Successfully notified listeners for sessionId: ${sessionId}`);
-      } catch (e) {
-        if (e instanceof z.ZodError) {
-            console.error("SIMULATION ERROR: Zod validation failed for sample itinerary.", e.flatten());
-            notifyListeners(sessionId, { error: "The simulated itinerary data format is invalid." });
-        }
-      }
-    }, 2000); // 2-second delay to simulate processing
+    const callbackUrl = `${appUrl}/api/webhook?sessionId=${sessionId}`;
 
+    const response = await fetch(n8nWebhookUrl, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        ...validatedData,
+        callbackUrl: callbackUrl,
+      }),
+    });
+
+    if (!response.ok) {
+        const errorBody = await response.text();
+        console.error(`n8n webhook call failed with status ${response.status}:`, errorBody);
+        return { success: false, error: `There was a problem starting the itinerary generation (status: ${response.status}).` };
+    }
+    
+    // The initial response from n8n confirms the workflow has started.
+    // The actual itinerary will be sent later to the callbackUrl.
     return { success: true, sessionId };
-    // --- END DEVELOPMENT SIMULATION ---
 
   } catch (error) {
     console.error('Error in generateItinerary action:', error);
@@ -82,6 +63,7 @@ export async function reviseItinerary(
   try {
     const { itineraryId, feedback } = revisionSchema.parse(data);
     
+    // This is placeholder logic for a future feature.
     await new Promise(resolve => setTimeout(resolve, 2000));
 
     const revisedItinerary: Itinerary = {
