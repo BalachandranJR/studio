@@ -14,16 +14,16 @@ export async function generateItinerary(
   try {
     const validatedData = travelPreferenceSchema.parse(data);
 
-    const webhookUrl = process.env.NEXT_PUBLIC_N8N_WEBHOOK_URL;
+    const webhookUrl = process.env.N8N_WEBHOOK_URL;
     if (!webhookUrl) {
       throw new Error(
-        'The NEXT_PUBLIC_N8N_WEBHOOK_URL environment variable is not set. Please add it to your .env file.'
+        'The N8N_WEBHOOK_URL environment variable is not set. Please add it to your .env file.'
       );
     }
     
-    const appUrl = process.env.NEXT_PUBLIC_APP_URL;
+    const appUrl = process.env.APP_URL;
     if (!appUrl) {
-        throw new Error('The NEXT_PUBLIC_APP_URL environment variable is not set. This is required for the callback.'
+        throw new Error('The APP_URL environment variable is not set. This is required for the callback.'
         );
     }
 
