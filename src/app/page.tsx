@@ -1,7 +1,7 @@
 
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { PlaneTakeoff } from "lucide-react";
 
 import { generateItinerary } from "@/app/actions";
@@ -17,27 +17,62 @@ export default function Home() {
   const [itinerary, setItinerary] = useState<Itinerary | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [sessionId, setSessionId] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!sessionId) return;
+
+    const eventSource = new EventSource(`/api/itinerary/stream?sessionId=${sessionId}`);
+
+    eventSource.onmessage = (event) => {
+        const data = JSON.parse(event.data);
+
+        if (data.error) {
+            setError(data.error);
+            setIsLoading(false);
+            eventSource.close();
+        } else if (data.itinerary) {
+            setItinerary(data.itinerary);
+            setIsLoading(false);
+            eventSource.close();
+        }
+    };
+    
+    eventSource.onerror = (err) => {
+      console.error("EventSource failed:", err);
+      setError("Connection to the server was lost. Please try again.");
+      setIsLoading(false);
+      eventSource.close();
+    };
+
+
+    return () => {
+      eventSource.close();
+    };
+  }, [sessionId]);
+
 
   const handleFormSubmit = async (data: TravelPreference) => {
     setIsLoading(true);
     setError(null);
     setItinerary(null);
+    setSessionId(null);
 
     const result = await generateItinerary(data);
 
     if (result.success) {
-      setItinerary(result.itinerary);
+      setSessionId(result.sessionId);
     } else {
       setError(result.error);
+      setIsLoading(false);
     }
-    
-    setIsLoading(false);
   };
   
   const resetForm = () => {
     setItinerary(null);
     setIsLoading(false);
     setError(null);
+    setSessionId(null);
   };
 
   return (
