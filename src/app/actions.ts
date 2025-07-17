@@ -62,8 +62,16 @@ export async function generateItinerary(
       const errorBody = await response.text();
       console.error('Error from n8n workflow:', errorBody);
       throw new Error(
-        `The itinerary generation service failed with status: ${response.status}.`
+        `The itinerary generation service failed with status: ${response.status}. Response: ${errorBody}`
       );
+    }
+
+    // N8N sends an immediate response to acknowledge the workflow has started.
+    // We check this response to ensure it was accepted.
+    const ackResponse = await response.json();
+    if (!ackResponse || !ackResponse.success) {
+      console.error("Received a non-successful acknowledgment from n8n:", ackResponse);
+      throw new Error("The itinerary generation request was not accepted by the service.");
     }
 
     return { success: true, sessionId };
