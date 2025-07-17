@@ -7,6 +7,7 @@ import { z } from 'zod';
 
 import type { Itinerary, TravelPreference } from '@/lib/types';
 import { ItinerarySchema, travelPreferenceSchema } from '@/lib/types';
+import { notifyListeners } from '@/lib/itinerary-events';
 
 export async function generateItinerary(
   data: TravelPreference,
@@ -14,7 +15,52 @@ export async function generateItinerary(
 ): Promise<{ success: true; sessionId: string } | { success: false; error: string }> {
   try {
     const validatedData = travelPreferenceSchema.parse(data);
+    const sessionId = uuidv4();
 
+    // --- START DEVELOPMENT SIMULATION ---
+    // In a real deployment, you would remove this block and use the real n8n fetch call.
+    // This simulation bypasses the network call to the private dev URL.
+    console.log("SIMULATION: Bypassing n8n call and simulating a successful response.");
+
+    setTimeout(() => {
+      const sampleItinerary: Itinerary = {
+        id: `sim-${new Date().getTime()}`,
+        destination: validatedData.destination,
+        startDate: validatedData.dates.from.toISOString(),
+        endDate: validatedData.dates.to.toISOString(),
+        days: [
+          {
+            day: 1,
+            date: format(validatedData.dates.from, "MMMM do, yyyy"),
+            activities: [
+              { time: "9:00 AM", description: "Arrive and check into your simulated hotel.", type: "transport", icon: "plane" },
+              { time: "1:00 PM", description: "Lunch at a fantastic simulated local restaurant.", type: "food", icon: "utensils-crossed" },
+              { time: "3:00 PM", description: `Explore the area related to your interest in: ${validatedData.interests[0]}.`, type: "activity", icon: "palette" },
+            ]
+          },
+          {
+            day: 2,
+            date: format(new Date(validatedData.dates.from).setDate(validatedData.dates.from.getDate() + 1), "MMMM do, yyyy"),
+            activities: [
+              { time: "10:00 AM", description: "A simulated activity based on your preferences.", type: "activity", icon: "sparkles" },
+              { time: "7:00 PM", description: "Simulated dinner and evening entertainment.", type: "food", icon: "utensils-crossed" },
+            ]
+          }
+        ]
+      };
+      
+      const validatedSample = ItinerarySchema.parse(sampleItinerary);
+      notifyListeners(sessionId, { itinerary: validatedSample });
+      console.log(`SIMULATION: Notified listeners for sessionId: ${sessionId}`);
+
+    }, 5000); // 5-second delay to simulate processing
+
+    return { success: true, sessionId };
+    // --- END DEVELOPMENT SIMULATION ---
+
+
+    /*
+    // --- REAL N8N INTEGRATION (currently commented out) ---
     const webhookUrl = process.env.N8N_WEBHOOK_URL;
     if (!webhookUrl) {
       throw new Error(
@@ -26,13 +72,10 @@ export async function generateItinerary(
         throw new Error('The application URL was not provided by the client. Cannot create callback.');
     }
 
-    // Function to fix protocol-relative URLs and ensure a protocol exists.
     function normalizeUrl(url: string): string {
-      // Handle protocol-relative URLs like "//domain.com"
       if (url.startsWith('//')) {
         return `https:${url}`;
       }
-      // Handle URLs without any protocol like "domain.com"
       if (!url.startsWith('http://') && !url.startsWith('https://')) {
         return `https://${url}`;
       }
@@ -41,21 +84,18 @@ export async function generateItinerary(
 
     const normalizedAppUrl = normalizeUrl(appUrl);
 
-    // Final check to prevent localhost URLs
     if (normalizedAppUrl.includes('localhost') || normalizedAppUrl.includes('127.0.0.1')) {
         const errorMessage = "The application URL is a localhost address. n8n requires a public URL to send the itinerary back.";
         console.error(errorMessage);
         return { success: false, error: errorMessage };
     }
 
-    const sessionId = uuidv4();
     const callbackUrl = `${normalizedAppUrl}/api/webhook?sessionId=${sessionId}`;
     
     console.log('Raw App URL from client:', appUrl);
     console.log('Normalized App URL:', normalizedAppUrl);
     console.log('Generated Callback URL for n8n:', callbackUrl);
 
-    // Validate the final URL format
     try {
       new URL(callbackUrl);
     } catch (e) {
@@ -63,7 +103,6 @@ export async function generateItinerary(
       console.error(errorMessage, e);
       return { success: false, error: errorMessage };
     }
-
 
     const payload = {
         ...validatedData,
@@ -91,8 +130,8 @@ export async function generateItinerary(
     }
 
     console.log('Successfully sent request to n8n.');
-
     return { success: true, sessionId };
+    */
 
   } catch (error) {
     console.error('Error in generateItinerary action:', error);
