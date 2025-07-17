@@ -24,6 +24,12 @@ export async function generateItinerary(
     if (!appUrl) {
         throw new Error('The APP_URL environment variable is not set. This is required for the callback.');
     }
+    
+    console.log(`Using APP_URL from environment: ${appUrl}`);
+
+    if (appUrl.includes('localhost') || appUrl.includes('127.0.0.1')) {
+      throw new Error(`The APP_URL ("${appUrl}") is a local address. It must be a public URL that the n8n service can reach. Please update your .env file with your public application URL.`);
+    }
 
     const sessionId = uuidv4();
     const callbackUrl = `${appUrl}/api/webhook?sessionId=${sessionId}`;
@@ -71,6 +77,10 @@ export async function generateItinerary(
         `The itinerary generation service failed with status: ${response.status} ${response.statusText}.`
       );
     }
+
+    // Since n8n sends an immediate ack, we just confirm it was received.
+    // The actual itinerary will come via the webhook.
+    console.log('Successfully sent request to n8n.');
 
     return { success: true, sessionId };
     
