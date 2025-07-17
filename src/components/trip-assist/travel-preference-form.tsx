@@ -105,7 +105,7 @@ export function TravelPreferenceForm({ onSubmit, isPending }: TravelPreferenceFo
                 control={form.control}
                 name="dates"
                 render={({ field }) => (
-                  <FormItem>
+                  <FormItem className="flex flex-col">
                     <FormLabel>Travel Dates</FormLabel>
                     <Popover>
                       <PopoverTrigger asChild>
@@ -152,6 +152,8 @@ export function TravelPreferenceForm({ onSubmit, isPending }: TravelPreferenceFo
             </div>
           </CardContent>
         </Card>
+
+        <Separator />
 
         <Card className="border-none shadow-none p-0">
           <CardHeader className="px-2">
