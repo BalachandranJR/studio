@@ -26,31 +26,44 @@ export async function generateItinerary(
         throw new Error('The application URL was not provided by the client. Cannot create callback.');
     }
 
-    // Ensure the URL has a protocol. Protocol-relative URLs (e.g., //example.com) will fail in n8n.
-    let correctedAppUrl = appUrl;
-    if (correctedAppUrl.startsWith('//')) {
-        correctedAppUrl = 'https:' + correctedAppUrl;
+    // Function to fix protocol-relative URLs and ensure a protocol exists.
+    function normalizeUrl(url: string): string {
+      // Handle protocol-relative URLs
+      if (url.startsWith('//')) {
+        return `https:${url}`;
+      }
+      // Handle URLs without a protocol
+      if (!url.startsWith('http://') && !url.startsWith('https://')) {
+        return `https://${url}`;
+      }
+      return url;
     }
 
-    try {
-        const url = new URL(correctedAppUrl);
-        if (url.hostname.includes('localhost') || url.hostname.includes('127.0.0.1')) {
-            const errorMessage = "The application URL is a localhost address. n8n requires a public URL to send the itinerary back.";
-            console.error(errorMessage);
-            return { success: false, error: errorMessage };
-        }
-    } catch (e) {
-        const errorMessage = `Invalid callback URL format: ${correctedAppUrl}`;
-        console.error(errorMessage, e);
+    const normalizedAppUrl = normalizeUrl(appUrl);
+
+    // Final check to prevent localhost URLs
+    if (normalizedAppUrl.includes('localhost') || normalizedAppUrl.includes('127.0.0.1')) {
+        const errorMessage = "The application URL is a localhost address. n8n requires a public URL to send the itinerary back.";
+        console.error(errorMessage);
         return { success: false, error: errorMessage };
     }
 
-
     const sessionId = uuidv4();
-    const callbackUrl = `${correctedAppUrl}/api/webhook?sessionId=${sessionId}`;
+    const callbackUrl = `${normalizedAppUrl}/api/webhook?sessionId=${sessionId}`;
     
-    console.log('Using Corrected App URL from client:', correctedAppUrl);
+    console.log('Raw App URL from client:', appUrl);
+    console.log('Normalized App URL:', normalizedAppUrl);
     console.log('Generated Callback URL for n8n:', callbackUrl);
+
+    // Validate the final URL format
+    try {
+      new URL(callbackUrl);
+    } catch (e) {
+      const errorMessage = `Invalid callback URL format after normalization: ${callbackUrl}`;
+      console.error(errorMessage, e);
+      return { success: false, error: errorMessage };
+    }
+
 
     const payload = {
         ...validatedData,
