@@ -1,8 +1,9 @@
+
 'use server';
 
-import type { z } from 'zod';
 import { v4 as uuidv4 } from 'uuid';
 import { format } from "date-fns";
+import { z } from 'zod';
 
 import type { Itinerary, TravelPreference } from '@/lib/types';
 import { travelPreferenceSchema, ItinerarySchema } from '@/lib/types';
@@ -30,11 +31,20 @@ export async function generateItinerary(
     const callbackUrl = `${appUrl}/api/webhook?sessionId=${sessionId}`;
 
     const payload = {
-      ...validatedData,
+      destination: validatedData.destination,
       dates: {
         from: validatedData.dates.from.toISOString(),
         to: validatedData.dates.to.toISOString(),
       },
+      numPeople: validatedData.numPeople,
+      ageGroups: validatedData.ageGroups,
+      interests: validatedData.interests,
+      otherInterests: validatedData.otherInterests,
+      budget: validatedData.budget,
+      transport: validatedData.transport,
+      otherTransport: validatedData.otherTransport,
+      foodPreferences: validatedData.foodPreferences,
+      otherFoodPreferences: validatedData.otherFoodPreferences,
       callbackUrl: callbackUrl,
     };
 
@@ -52,7 +62,8 @@ export async function generateItinerary(
       );
     }
 
-    await response.json();
+    // Assuming n8n sends an immediate acknowledgment
+    await response.json(); 
 
     return { success: true, sessionId };
     
@@ -79,8 +90,10 @@ export async function reviseItinerary(
   try {
     const { feedback } = revisionSchema.parse(data);
     
+    // Simulate API call delay
     await new Promise(resolve => setTimeout(resolve, 2000));
 
+    // Dummy revised itinerary data
     const revisedItinerary: Itinerary = {
       id: new Date().getTime().toString(),
       destination: "Revised Destination",
@@ -98,6 +111,7 @@ export async function reviseItinerary(
       ]
     };
     
+    // Validate the created itinerary against the schema
     const validatedItinerary = ItinerarySchema.parse(revisedItinerary);
 
     return { success: true, itinerary: validatedItinerary };
