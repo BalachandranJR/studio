@@ -12,36 +12,6 @@ import { TravelPreferenceForm } from "@/components/trip-assist/travel-preference
 import type { Itinerary, TravelPreference } from "@/lib/types";
 import { Button } from "@/components/ui/button";
 
-const sampleItinerary: Itinerary = {
-  id: "sample-123",
-  destination: "Paris, France",
-  startDate: "2024-08-15T00:00:00.000Z",
-  endDate: "2024-08-17T00:00:00.000Z",
-  days: [
-    {
-      day: 1,
-      date: "August 15th, 2024",
-      activities: [
-        { time: "9:00 AM", description: "Visit the Louvre Museum", type: "attraction", icon: "landmark" },
-        { time: "1:00 PM", description: "Lunch at Le Procope", type: "food", icon: "food" },
-        { time: "3:00 PM", description: "Explore Montmartre & Sacré-Cœur", type: "activity", icon: "activity" },
-        { time: "7:00 PM", description: "Dinner Cruise on the Seine", type: "food", icon: "shopping" }
-      ]
-    },
-    {
-      day: 2,
-      date: "August 16th, 2024",
-      activities: [
-        { time: "10:00 AM", description: "Ascend the Eiffel Tower", type: "attraction", icon: "landmark" },
-        { time: "12:30 PM", description: "Picnic lunch at Champ de Mars", type: "food", icon: "food" },
-        { time: "2:30 PM", description: "Stroll along Champs-Élysées", type: "activity", icon: "activity" },
-        { time: "5:00 PM", description: "Visit the Arc de Triomphe", type: "attraction", icon: "landmark" }
-      ]
-    }
-  ]
-};
-
-
 export default function Home() {
   const [itinerary, setItinerary] = useState<Itinerary | null>(null);
   const [isLoading, setIsLoading] = useState(false);
@@ -57,6 +27,7 @@ export default function Home() {
         const data = JSON.parse(event.data);
 
         if (data.error) {
+            console.error("Error received from server stream:", data.error);
             setError(data.error);
             setIsLoading(false);
             eventSource.close();
@@ -69,7 +40,7 @@ export default function Home() {
     
     eventSource.onerror = (err) => {
       console.error("EventSource failed:", err);
-      setError("Connection to the server was lost. Please try again.");
+      setError("Connection to the server was lost while waiting for the itinerary. Please try again.");
       setIsLoading(false);
       eventSource.close();
     };
@@ -92,6 +63,7 @@ export default function Home() {
     if (result.success) {
       setSessionId(result.sessionId);
     } else {
+      console.error("Error from generateItinerary action:", result.error);
       setError(result.error);
       setIsLoading(false);
     }
@@ -119,7 +91,7 @@ export default function Home() {
       </header>
 
       <div className="max-w-4xl mx-auto">
-        {!isLoading && !itinerary && (
+        {!isLoading && !itinerary && !error && (
           <Card>
             <CardHeader>
               <CardTitle className="font-headline text-2xl">Plan Your Next Adventure</CardTitle>
@@ -142,16 +114,16 @@ export default function Home() {
         )}
         
         {error && !isLoading && (
-           <div className="space-y-4">
+           <div className="space-y-4 text-center">
             <Alert variant="destructive">
               <AlertTitle>Error Generating Itinerary</AlertTitle>
               <AlertDescription>{error}</AlertDescription>
             </Alert>
             <Button
               onClick={resetApp}
-              variant="link"
+              variant="outline"
             >
-              Try again
+              Start New Plan
             </Button>
            </div>
         )}
