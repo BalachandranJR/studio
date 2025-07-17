@@ -26,12 +26,19 @@ export async function generateItinerary(
         throw new Error('The application URL was not provided by the client. Cannot create callback.');
     }
 
-    // A simpler, more reliable check for local addresses.
-    if (appUrl.includes('localhost') || appUrl.includes('127.0.0.1')) {
-      const errorMessage = `The application URL ("${appUrl}") is a local address. n8n requires a public URL to send the itinerary back. Please use the public URL provided by your hosting environment.`;
-      console.error(errorMessage);
-      return { success: false, error: errorMessage };
+    try {
+        const url = new URL(appUrl);
+        if (url.hostname === 'localhost' || url.hostname === '127.0.0.1') {
+            throw new Error("The application URL is a localhost address. n8n requires a public URL to send the itinerary back.");
+        }
+    } catch (e: any) {
+        const errorMessage = e instanceof Error && e.message.includes('localhost')
+            ? e.message
+            : `Failed to parse the appUrl ("${appUrl}"). Please check your hosting environment.`;
+        console.error(errorMessage);
+        return { success: false, error: errorMessage };
     }
+
 
     const sessionId = uuidv4();
     const callbackUrl = `${appUrl}/api/webhook?sessionId=${sessionId}`;
