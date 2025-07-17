@@ -18,9 +18,9 @@ export async function generateItinerary(
     const sessionId = uuidv4();
 
     // --- DEVELOPMENT SIMULATION ---
-    // This block simulates the n8n workflow for local development,
-    // bypassing the need for a public URL.
-    console.log("SIMULATION: Bypassing n8n call and starting 2-second mock response.");
+    // This block simulates the n8n workflow for local development 
+    // by creating a mock itinerary and notifying the front end directly.
+    console.log("SIMULATION: Starting 2-second mock response generation.");
 
     setTimeout(() => {
       const sampleItinerary: Itinerary = {
@@ -52,7 +52,7 @@ export async function generateItinerary(
       try {
         const validatedSample = ItinerarySchema.parse(sampleItinerary);
         notifyListeners(sessionId, { itinerary: validatedSample });
-        console.log(`SIMULATION: Notified listeners for sessionId: ${sessionId}`);
+        console.log(`SIMULATION: Successfully notified listeners for sessionId: ${sessionId}`);
       } catch (e) {
         if (e instanceof z.ZodError) {
             console.error("SIMULATION ERROR: Zod validation failed for sample itinerary.", e.flatten());
@@ -63,67 +63,6 @@ export async function generateItinerary(
 
     return { success: true, sessionId };
     // --- END DEVELOPMENT SIMULATION ---
-
-
-    /*
-    // --- REAL N8N INTEGRATION (FOR DEPLOYMENT) ---
-    
-    // 1. Check for webhook URL in environment variables
-    const webhookUrl = process.env.N8N_WEBHOOK_URL;
-    if (!webhookUrl) {
-      throw new Error(
-        'The N8N_WEBHOOK_URL environment variable is not set. Please add it to your .env file.'
-      );
-    }
-    
-    // 2. Validate the app URL provided by the client
-    if (!appUrl) {
-        throw new Error('The application URL was not provided by the client. Cannot create callback.');
-    }
-
-    // 3. Ensure app URL is public (not localhost) for n8n to reach it
-    if (appUrl.includes('localhost') || appUrl.includes('127.0.0.1')) {
-        const errorMessage = "The application URL is a localhost address. n8n requires a public URL to send the itinerary back.";
-        console.error(errorMessage);
-        return { success: false, error: errorMessage };
-    }
-
-    // 4. Construct the callback URL for n8n to send the result back to
-    const callbackUrl = `${appUrl}/api/webhook?sessionId=${sessionId}`;
-    console.log('Generated Callback URL for n8n:', callbackUrl);
-
-    // 5. Prepare the payload to send to the n8n webhook
-    const payload = {
-        ...validatedData,
-        dates: {
-            from: validatedData.dates.from.toISOString(),
-            to: validatedData.dates.to.toISOString(),
-        },
-        callbackUrl: callbackUrl,
-    };
-
-    // 6. Make the network request to n8n
-    const response = await fetch(webhookUrl, {
-        method: 'POST',
-        headers: {
-            'Content-Type': 'application/json'
-        },
-        body: JSON.stringify(payload),
-    });
-
-    // 7. Handle a failed response from n8n
-    if (!response.ok) {
-        const errorBody = await response.text();
-        console.error('Error from n8n workflow:', errorBody);
-        throw new Error(
-            `The itinerary generation service failed with status: ${response.status} ${response.statusText}.`
-        );
-    }
-
-    // 8. If successful, return the session ID to the client
-    console.log('Successfully sent request to n8n.');
-    return { success: true, sessionId };
-    */
 
   } catch (error) {
     console.error('Error in generateItinerary action:', error);
