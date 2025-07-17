@@ -1,108 +1,43 @@
 
 "use client";
 
-import { useState, useEffect, useRef } from "react";
+import { useState } from "react";
 import { PlaneTakeoff } from "lucide-react";
 
-import { generateItinerary, checkItineraryStatus } from "@/app/actions";
+import { generateItinerary } from "@/app/actions";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { ItineraryDisplay, ItinerarySkeleton } from "@/components/trip-assist/itinerary-display";
 import { TravelPreferenceForm } from "@/components/trip-assist/travel-preference-form";
 import type { Itinerary, TravelPreference } from "@/lib/types";
-import { useToast } from "@/hooks/use-toast";
+import { Button } from "@/components/ui/button";
 
-const POLLING_INTERVAL = 3000; // 3 seconds
 
 export default function Home() {
   const [itinerary, setItinerary] = useState<Itinerary | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [sessionId, setSessionId] = useState<string | null>(null);
-  const { toast } = useToast();
-  
-  // Use a ref to hold the interval ID to prevent re-renders from affecting it
-  const intervalRef = useRef<NodeJS.Timeout | null>(null);
-
-  useEffect(() => {
-    // Cleanup interval on component unmount
-    return () => {
-      if (intervalRef.current) {
-        clearInterval(intervalRef.current);
-      }
-    };
-  }, []);
-
-  const stopPolling = () => {
-    if (intervalRef.current) {
-      clearInterval(intervalRef.current);
-      intervalRef.current = null;
-    }
-  };
-
-  const startPolling = (currentSessionId: string) => {
-    // Stop any existing polling before starting a new one
-    stopPolling();
-    
-    intervalRef.current = setInterval(async () => {
-      if (!currentSessionId) {
-        stopPolling();
-        return;
-      }
-
-      const result = await checkItineraryStatus(currentSessionId);
-
-      switch (result.status) {
-        case 'completed':
-          setItinerary(result.data as Itinerary);
-          setIsLoading(false);
-          setError(null);
-          setSessionId(null);
-          stopPolling();
-          break;
-        case 'error':
-          setError(result.error || "An unknown error occurred.");
-          setIsLoading(false);
-          setSessionId(null);
-          stopPolling();
-          break;
-        case 'processing':
-          // Still processing, do nothing
-          break;
-        case 'not_found':
-        default:
-          setError("Could not find the itinerary session. It may have expired.");
-          setIsLoading(false);
-          setSessionId(null);
-          stopPolling();
-          break;
-      }
-    }, POLLING_INTERVAL);
-  };
 
   const handleFormSubmit = async (data: TravelPreference) => {
     setIsLoading(true);
     setError(null);
     setItinerary(null);
-    setSessionId(null);
 
     const result = await generateItinerary(data);
 
     if (result.success) {
-      setSessionId(result.sessionId);
-      startPolling(result.sessionId); // Start polling after getting a session ID
+      setItinerary(result.itinerary);
     } else {
       setError(result.error);
-      setIsLoading(false);
     }
+    
+    setIsLoading(false);
   };
   
   const resetForm = () => {
-    stopPolling(); // Make sure to stop polling when resetting
     setItinerary(null);
     setIsLoading(false);
     setError(null);
-    setSessionId(null);
   };
 
   return (
@@ -134,7 +69,7 @@ export default function Home() {
 
         {isLoading && (
           <div>
-            <p className="text-center text-lg font-semibold mb-4">Generating your itinerary... This may take a few minutes.</p>
+            <p className="text-center text-lg font-semibold mb-4">Generating your itinerary... This may take a moment.</p>
             <ItinerarySkeleton />
           </div>
         )}
@@ -145,12 +80,12 @@ export default function Home() {
               <AlertTitle>Error Generating Itinerary</AlertTitle>
               <AlertDescription>{error}</AlertDescription>
             </Alert>
-            <button
+            <Button
               onClick={resetForm}
-              className="text-primary hover:underline"
+              variant="link"
             >
               Try again
-            </button>
+            </Button>
            </div>
         )}
 
@@ -158,12 +93,12 @@ export default function Home() {
           <div className="mt-8">
             <ItineraryDisplay itinerary={itinerary} setItinerary={setItinerary} />
             <div className="text-center mt-8 no-print">
-               <button
+               <Button
                   onClick={resetForm}
-                  className="text-primary hover:underline"
+                  variant="link"
                 >
                   Start a new plan
-                </button>
+                </Button>
             </div>
           </div>
         )}
