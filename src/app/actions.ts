@@ -4,6 +4,7 @@
 import { v4 as uuidv4 } from 'uuid';
 import { format } from "date-fns";
 import { z } from 'zod';
+import { headers } from "next/headers";
 
 import type { Itinerary, TravelPreference } from '@/lib/types';
 import { travelPreferenceSchema, ItinerarySchema } from '@/lib/types';
@@ -21,10 +22,13 @@ export async function generateItinerary(
       );
     }
     
-    const appUrl = process.env.APP_URL;
-    if (!appUrl) {
-        throw new Error('The APP_URL environment variable is not set. This is required for the callback.'
-        );
+    const requestHeaders = headers();
+    const host = requestHeaders.get('host');
+    const protocol = requestHeaders.get('x-forwarded-proto') || 'http';
+    const appUrl = `${protocol}://${host}`;
+    
+    if (!host) {
+         throw new Error('Could not determine the application URL from request headers.');
     }
 
     const sessionId = uuidv4();
