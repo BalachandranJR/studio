@@ -12,9 +12,38 @@ import { TravelPreferenceForm } from "@/components/trip-assist/travel-preference
 import type { Itinerary, TravelPreference } from "@/lib/types";
 import { Button } from "@/components/ui/button";
 
+const sampleItinerary: Itinerary = {
+  id: "sample-123",
+  destination: "Paris, France",
+  startDate: "2024-08-15T00:00:00.000Z",
+  endDate: "2024-08-17T00:00:00.000Z",
+  days: [
+    {
+      day: 1,
+      date: "August 15th, 2024",
+      activities: [
+        { time: "9:00 AM", description: "Visit the Louvre Museum", type: "attraction", icon: "landmark" },
+        { time: "1:00 PM", description: "Lunch at Le Procope", type: "food", icon: "food" },
+        { time: "3:00 PM", description: "Explore Montmartre & Sacré-Cœur", type: "activity", icon: "activity" },
+        { time: "7:00 PM", description: "Dinner Cruise on the Seine", type: "food", icon: "shopping" }
+      ]
+    },
+    {
+      day: 2,
+      date: "August 16th, 2024",
+      activities: [
+        { time: "10:00 AM", description: "Ascend the Eiffel Tower", type: "attraction", icon: "landmark" },
+        { time: "12:30 PM", description: "Picnic lunch at Champ de Mars", type: "food", icon: "food" },
+        { time: "2:30 PM", description: "Stroll along Champs-Élysées", type: "activity", icon: "activity" },
+        { time: "5:00 PM", description: "Visit the Arc de Triomphe", type: "attraction", icon: "landmark" }
+      ]
+    }
+  ]
+};
+
 
 export default function Home() {
-  const [itinerary, setItinerary] = useState<Itinerary | null>(null);
+  const [itinerary, setItinerary] = useState<Itinerary | null>(sampleItinerary);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [sessionId, setSessionId] = useState<string | null>(null);
@@ -77,6 +106,10 @@ export default function Home() {
     setError(null);
     setSessionId(null);
   };
+  
+  const showForm = () => {
+    setItinerary(null);
+  }
 
   return (
     <main className="container mx-auto px-4 py-8 md:py-12">
@@ -130,12 +163,12 @@ export default function Home() {
            </div>
         )}
 
-        {itinerary && (
+        {itinerary && !isLoading && (
           <div className="mt-8">
             <ItineraryDisplay itinerary={itinerary} setItinerary={setItinerary} />
             <div className="text-center mt-8 no-print">
                <Button
-                  onClick={resetForm}
+                  onClick={showForm}
                   variant="link"
                 >
                   Start a new plan
