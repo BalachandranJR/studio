@@ -7,9 +7,17 @@ import { z } from 'zod';
 import type { TravelPreference } from '@/lib/types';
 import { travelPreferenceSchema } from '@/lib/types';
 
+function getAppUrl() {
+  if (process.env.VERCEL_URL) {
+    // Vercel system variable for the deployment URL.
+    return `https://${process.env.VERCEL_URL}`;
+  }
+  // Fallback for local development
+  return 'http://localhost:9002';
+}
+
 export async function generateItinerary(
-  data: TravelPreference,
-  appUrl: string
+  data: TravelPreference
 ): Promise<{ success: true; sessionId: string } | { success: false; error: string }> {
   try {
     const validatedData = travelPreferenceSchema.parse(data);
@@ -21,7 +29,12 @@ export async function generateItinerary(
       return { success: false, error: 'The application is not configured to connect to the itinerary generation service. Please contact support.' };
     }
 
+    const appUrl = getAppUrl();
     const callbackUrl = `${appUrl}/api/webhook?sessionId=${sessionId}`;
+    
+    console.log("Using n8n Webhook URL:", n8nWebhookUrl);
+    console.log("Using Callback URL:", callbackUrl);
+
 
     const response = await fetch(n8nWebhookUrl, {
       method: 'POST',

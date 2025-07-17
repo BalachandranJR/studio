@@ -43,7 +43,7 @@ const sampleItinerary: Itinerary = {
 
 
 export default function Home() {
-  const [itinerary, setItinerary] = useState<Itinerary | null>(sampleItinerary);
+  const [itinerary, setItinerary] = useState<Itinerary | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [sessionId, setSessionId] = useState<string | null>(null);
@@ -87,10 +87,7 @@ export default function Home() {
     setItinerary(null);
     setSessionId(null);
     
-    // Get the public URL from the client-side window object
-    const appUrl = window.location.origin;
-
-    const result = await generateItinerary(data, appUrl);
+    const result = await generateItinerary(data);
 
     if (result.success) {
       setSessionId(result.sessionId);
