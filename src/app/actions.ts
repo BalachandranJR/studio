@@ -1,4 +1,3 @@
-
 'use server';
 
 import { v4 as uuidv4 } from 'uuid';
@@ -34,6 +33,14 @@ export async function generateItinerary(
     const sessionId = uuidv4();
     const callbackUrl = `${appUrl}/api/webhook?sessionId=${sessionId}`;
 
+    // Validate the constructed URL
+    try {
+      new URL(callbackUrl);
+    } catch (urlError) {
+      console.error('Invalid callback URL constructed:', callbackUrl);
+      throw new Error('Failed to construct a valid callback URL');
+    }
+
     console.log('Generated Callback URL for n8n:', callbackUrl);
 
     const payload = {
@@ -56,7 +63,9 @@ export async function generateItinerary(
 
     const response = await fetch(webhookUrl, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: { 
+        'Content-Type': 'application/json'
+      },
       body: JSON.stringify(payload),
     });
 
@@ -67,6 +76,10 @@ export async function generateItinerary(
         `The itinerary generation service failed with status: ${response.status} ${response.statusText}.`
       );
     }
+
+    // You can optionally log the success response from n8n if it sends one
+    // const responseData = await response.json();
+    // console.log('Success response from n8n:', responseData);
 
     return { success: true, sessionId };
     
