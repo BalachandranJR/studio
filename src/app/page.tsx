@@ -4,6 +4,7 @@
 import { useEffect, useState, useCallback, useRef } from "react";
 import { PlaneTakeoff, Loader2, Send } from "lucide-react";
 import useEmblaCarousel from 'embla-carousel-react';
+import Autoplay from 'embla-carousel-autoplay';
 import Image from 'next/image';
 
 import { generateItinerary } from "@/app/actions";
@@ -24,7 +25,7 @@ async function pollForResult(sessionId: string): Promise<{itinerary?: Itinerary,
 }
 
 const LoadingAnimation = () => {
-    const [emblaRef] = useEmblaCarousel({ loop: true });
+    const [emblaRef] = useEmblaCarousel({ loop: true }, [Autoplay({ delay: 4000 })]);
 
     const quotes = [
         { quote: "Travel is the only thing you buy that makes you richer.", author: "Anonymous" },
