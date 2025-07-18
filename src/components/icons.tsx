@@ -10,6 +10,7 @@ import {
   Train,
   UtensilsCrossed,
   ShoppingBasket,
+  GlassWater,
   type ComponentType,
 } from 'lucide-react';
 
@@ -26,6 +27,7 @@ export const iconMap: { [key: string]: ComponentType<LucideProps> } = {
   wellness: Sparkles,
   spa: Sparkles,
   shopping: ShoppingBasket,
+  nightlife: GlassWater,
   default: Palette,
 };
 

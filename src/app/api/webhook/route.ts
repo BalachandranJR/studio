@@ -4,11 +4,16 @@ import { ItinerarySchema, Itinerary } from '@/lib/types';
 import { z } from 'zod';
 import { unstable_noStore as noStore } from 'next/cache';
 
-// A simple Map on the global scope works better in Next.js for serverless environments
-// than a request-scoped one. While not guaranteed to persist across all serverless instances
-// in a scaled environment, it's a common pattern for simple use cases on platforms like Vercel
-// that try to reuse warm instances.
-const resultStore: Map<string, { itinerary?: Itinerary; error?: string }> = new Map();
+// This is a more robust way to handle in-memory cache in a serverless environment like Vercel.
+// It attaches the cache to the global object, which can persist between "warm" function invocations.
+const globalForCache = globalThis as unknown as {
+  resultCache: Map<string, { itinerary?: Itinerary; error?: string }> | undefined;
+};
+
+const resultStore = globalForCache.resultCache ?? new Map<string, { itinerary?: Itinerary; error?: string }>();
+if (process.env.NODE_ENV !== 'production') globalForCache.resultCache = resultStore;
+
+
 const CACHE_TTL = 5 * 60 * 1000; // 5 minutes
 
 

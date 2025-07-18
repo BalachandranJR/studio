@@ -163,10 +163,14 @@ function parseTimeToMinutes(timeStr: string | undefined): number {
 
     const lowerTime = timeStr.toLowerCase().trim();
 
+    // Map for descriptive times
     const timeMap: { [key: string]: number } = {
+        'full day': 1,
+        'all day': 1,
         'early morning': 6 * 60,
         'morning': 9 * 60,
         'late morning': 11 * 60,
+        'brunch': 11 * 60,
         'lunch': 12 * 60,
         'afternoon': 14 * 60,
         'late afternoon': 16 * 60,
@@ -174,15 +178,19 @@ function parseTimeToMinutes(timeStr: string | undefined): number {
         'dinner': 19 * 60,
         'night': 21 * 60,
         'late night': 23 * 60,
-        'full day': 1, // Sort full day activities first
-        'all day': 1,
     };
-    if (timeMap[lowerTime]) {
-        return timeMap[lowerTime];
+
+    // Check for descriptive time first
+    for (const key in timeMap) {
+        if (lowerTime.includes(key)) {
+            return timeMap[key];
+        }
     }
-    
+
+    // Regex for numeric time (e.g., "9:00 AM", "13:30", "5pm")
     const match = lowerTime.match(/(\d{1,2})[:.]?(\d{2})?\s*(am|pm)?/);
     if (!match) {
+        // Return a high value to sort unparsable times last
         return 9998; 
     }
 
@@ -194,6 +202,7 @@ function parseTimeToMinutes(timeStr: string | undefined): number {
         return 9997;
     }
 
+    // Convert to 24-hour format
     if (period === 'pm' && hours < 12) {
         hours += 12;
     } else if (period === 'am' && hours === 12) { // Midnight case: 12am -> 00:00
@@ -216,13 +225,21 @@ export function ItineraryDisplay({ itinerary, preferences, onRestart }: Itinerar
     }, 100);
   };
   
-  const sortedItinerary = {
-      ...itinerary,
-      days: itinerary.days.map(day => ({
-          ...day,
-          activities: [...day.activities].sort((a, b) => parseTimeToMinutes(a.time) - parseTimeToMinutes(b.time)),
-      })),
-  };
+  let sortedItinerary = itinerary;
+  try {
+      sortedItinerary = {
+          ...itinerary,
+          days: itinerary.days.map(day => ({
+              ...day,
+              activities: [...day.activities].sort((a, b) => parseTimeToMinutes(a.time) - parseTimeToMinutes(b.time)),
+          })),
+      };
+  } catch (e) {
+      console.error("Failed to sort itinerary activities, displaying unsorted.", e);
+      // If sorting fails for any reason, use the original itinerary to prevent a crash
+      sortedItinerary = itinerary;
+  }
+  
 
   return (
     <>
