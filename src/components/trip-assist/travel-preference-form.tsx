@@ -2,7 +2,7 @@
 "use client";
 
 import { zodResolver } from "@hookform/resolvers/zod";
-import { useForm } from "react-hook-form";
+import { useForm, FieldErrors } from "react-hook-form";
 import { format } from "date-fns";
 import { CalendarIcon, Car, Loader2, MapPin, Plane, Train, Users, Utensils, Sprout, WheatOff, Star, MilkOff, HandPlatter, Check, ChevronsUpDown } from "lucide-react";
 
@@ -83,9 +83,19 @@ export function TravelPreferenceForm({ onSubmit, isPending }: TravelPreferenceFo
     onSubmit(data);
   }
 
+  function onFormError(errors: FieldErrors<TravelPreference>) {
+    const firstErrorField = Object.keys(errors)[0];
+    if (firstErrorField) {
+      const element = document.getElementsByName(firstErrorField)[0];
+      if (element) {
+        element.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      }
+    }
+  }
+
   return (
     <Form {...form}>
-      <form onSubmit={form.handleSubmit(onFormSubmit)} className="space-y-8">
+      <form onSubmit={form.handleSubmit(onFormSubmit, onFormError)} className="space-y-8">
         
         <Card className="border-none shadow-none p-0">
           <CardHeader className="px-2">
@@ -316,37 +326,37 @@ export function TravelPreferenceForm({ onSubmit, isPending }: TravelPreferenceFo
           </CardHeader>
           <CardContent className="px-2">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <FormField
-                    control={form.control}
-                    name="budget.currency"
-                    render={({ field }) => (
-                        <FormItem>
-                            <FormLabel>Currency</FormLabel>
-                            <FormControl>
-                                <Combobox
-                                    options={currencies}
-                                    value={field.value}
-                                    onChange={field.onChange}
-                                    placeholder="Select currency..."
-                                />
-                            </FormControl>
-                            <FormMessage />
-                        </FormItem>
-                    )}
-                />
-                <FormField
-                    control={form.control}
-                    name="budget.amount"
-                    render={({ field }) => (
-                    <FormItem>
-                        <FormLabel>Amount</FormLabel>
-                        <FormControl>
-                            <Input type="number" placeholder="Approximate budget per person" {...field} />
-                        </FormControl>
-                        <FormMessage />
-                    </FormItem>
-                    )}
-                />
+              <FormField
+                  control={form.control}
+                  name="budget.currency"
+                  render={({ field }) => (
+                      <FormItem>
+                          <FormLabel>Currency</FormLabel>
+                          <FormControl>
+                              <Combobox
+                                  options={currencies}
+                                  value={field.value}
+                                  onChange={field.onChange}
+                                  placeholder="Select currency..."
+                              />
+                          </FormControl>
+                          <FormMessage />
+                      </FormItem>
+                  )}
+              />
+              <FormField
+                  control={form.control}
+                  name="budget.amount"
+                  render={({ field }) => (
+                  <FormItem>
+                      <FormLabel>Amount</FormLabel>
+                      <FormControl>
+                          <Input type="number" placeholder="Approximate budget per person" {...field} />
+                      </FormControl>
+                      <FormMessage />
+                  </FormItem>
+                  )}
+              />
             </div>
              {watchedCurrency === 'OTHER' && (
               <div className="mt-4">
@@ -524,5 +534,3 @@ export function TravelPreferenceForm({ onSubmit, isPending }: TravelPreferenceFo
     </Form>
   );
 }
-
-    
