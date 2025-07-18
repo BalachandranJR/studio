@@ -2,7 +2,7 @@
 "use client";
 
 import { format, parseISO } from "date-fns";
-import { Download, RotateCcw, Calendar as CalendarIcon, Clock } from "lucide-react";
+import { Download, RotateCcw, Calendar as CalendarIcon, Clock, MapPin, DollarSign, Bus } from "lucide-react";
 
 import { ItineraryIcon } from "@/components/icons";
 import {
@@ -22,12 +22,24 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
-import type { Itinerary } from "@/lib/types";
+import type { Itinerary, Activity } from "@/lib/types";
 
 interface ItineraryDisplayProps {
   itinerary: Itinerary;
   onRestart: () => void;
 }
+
+const ActivityDetail = ({ icon: Icon, label, value }: { icon: React.ElementType, label: string, value?: string }) => {
+  if (!value) return null;
+  return (
+    <div className="flex items-start text-xs text-muted-foreground mt-1">
+      <Icon className="h-3 w-3 mr-2 mt-0.5 shrink-0" />
+      <span className="font-semibold mr-1">{label}:</span>
+      <span>{value}</span>
+    </div>
+  );
+};
+
 
 export function ItineraryDisplay({ itinerary, onRestart }: ItineraryDisplayProps) {
   const handleDownload = () => {
@@ -70,9 +82,14 @@ export function ItineraryDisplay({ itinerary, onRestart }: ItineraryDisplayProps
                           <div className="flex-1">
                             <p className="font-semibold flex items-center gap-2">
                               <Clock className="h-4 w-4 text-muted-foreground" />
-                              {activity.time}
+                              {activity.time} - {activity.name || "Activity"}
                             </p>
                             <p className="text-muted-foreground pl-6">{activity.description}</p>
+                            <div className="pl-6 mt-2 space-y-1">
+                                <ActivityDetail icon={MapPin} label="Location" value={activity.location} />
+                                <ActivityDetail icon={DollarSign} label="Cost" value={activity.cost} />
+                                <ActivityDetail icon={Bus} label="Transport" value={activity.transport} />
+                            </div>
                           </div>
                         </div>
                       ))}

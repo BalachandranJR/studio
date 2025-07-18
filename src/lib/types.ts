@@ -1,3 +1,4 @@
+
 import { z } from "zod";
 
 export const ageGroups = [
@@ -72,11 +73,16 @@ export const travelPreferenceSchema = z.object({
 
 export type TravelPreference = z.infer<typeof travelPreferenceSchema>;
 
+// Updated ActivitySchema to match n8n workflow output
 export const ActivitySchema = z.object({
-  time: z.string().describe("The time of the activity, e.g., '9:00 AM'."),
+  time: z.string().describe("The time of the activity, e.g., '9:00 AM' or 'Morning'."),
   description: z.string().describe("A brief description of the activity."),
-  type: z.string().describe("The category of the activity."),
-  icon: z.string().describe("An icon name representing the activity type."),
+  name: z.string().optional().describe("The name of the activity."), // Keeping this as it might be what gets displayed
+  type: z.string().describe("The category of the activity.").catch("activity"), // Provide a default
+  icon: z.string().describe("An icon name representing the activity type.").catch("default"), // Provide a default
+  location: z.string().optional(),
+  cost: z.string().optional(),
+  transport: z.string().optional(),
 });
 
 export const ItineraryDaySchema = z.object({
@@ -85,11 +91,11 @@ export const ItineraryDaySchema = z.object({
   activities: z.array(ActivitySchema).describe("A list of activities for the day."),
 });
 
+// Updated ItinerarySchema to match n8n workflow output
 export const ItinerarySchema = z.object({
-  id: z.string().describe("A unique identifier for the itinerary."),
   destination: z.string().describe("The travel destination."),
-  startDate: z.string().describe("The start date of the trip in 'yyyy-MM-dd' format."),
-  endDate: z.string().describe("The end date of the trip in 'yyyy-MM-dd' format."),
+  startDate: z.string().describe("The start date of the trip, can be a full ISO string."),
+  endDate: z.string().describe("The end date of the trip, can be a full ISO string."),
   days: z.array(ItineraryDaySchema).describe("A list of days, each with their own schedule."),
 });
 
