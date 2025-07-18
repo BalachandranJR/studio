@@ -11,6 +11,7 @@ function getAppUrl() {
   const appUrl = process.env.NEXT_PUBLIC_APP_URL;
   if (!appUrl) {
     console.error('CRITICAL: NEXT_PUBLIC_APP_URL is not set. Using fallback for local dev.');
+    // Fallback for local development if the env var isn't set.
     return 'http://localhost:9002';
   }
   
