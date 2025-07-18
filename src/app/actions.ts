@@ -39,7 +39,7 @@ export async function generateItinerary(
     const callbackUrl = `${appUrl.replace(/\/$/, '')}/api/webhook?sessionId=${sessionId}`;
     
     console.log("Using n8n Webhook URL:", n8nWebhookUrl);
-    console.log("Using Callback URL for n8n:", callbackUrl);
+    console.log(">>>> IMPORTANT: This is the callback URL being sent to n8n. Please verify it in your n8n workflow's final HTTP Request node:", callbackUrl);
 
     const headers: HeadersInit = {
       'Content-Type': 'application/json',
