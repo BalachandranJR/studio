@@ -80,31 +80,47 @@ const TripSummary = ({ preferences }: { preferences: TravelPreference }) => {
     );
 };
 
+/**
+ * Parses a time string (e.g., "9:00 AM", "1 PM", "Morning") into a number of minutes
+ * from midnight for sorting purposes. Handles various formats gracefully.
+ * @param timeStr The time string to parse.
+ * @returns A number representing minutes from midnight, or a large number for unrecognized formats.
+ */
 function parseTimeToMinutes(timeStr: string | undefined): number {
-    if (!timeStr) return 9999;
-    
+    if (!timeStr) return 9999; // Sort undefined times to the end.
+
     const lowerTime = timeStr.toLowerCase();
 
-    if (lowerTime.includes('morning')) return 8 * 60;
-    if (lowerTime.includes('afternoon')) return 13 * 60;
-    if (lowerTime.includes('evening') || lowerTime.includes('night')) return 19 * 60;
-    if (lowerTime.includes('lunch')) return 12 * 60;
-    if (lowerTime.includes('dinner')) return 19 * 60;
+    // Handle general time descriptions
+    if (lowerTime.includes('morning')) return 8 * 60;   // 8:00 AM
+    if (lowerTime.includes('lunch')) return 12 * 60;  // 12:00 PM
+    if (lowerTime.includes('afternoon')) return 14 * 60; // 2:00 PM
+    if (lowerTime.includes('evening') || lowerTime.includes('dinner')) return 19 * 60; // 7:00 PM
+    if (lowerTime.includes('night')) return 21 * 60;   // 9:00 PM
 
-    const match = lowerTime.match(/(\d{1,2}):?(\d{2})?\s*(am|pm)?/);
-    if (!match) return 9999;
+    // Handle specific times like "9:00 AM", "13:00", "1pm"
+    const match = lowerTime.match(/(\d{1,2})[:.]?(\d{2})?\s*(am|pm)?/);
+    if (!match) {
+        return 9998; // Sort unrecognized specific times just before undefined ones.
+    }
 
     let [_, hoursStr, minutesStr, period] = match;
     let hours = parseInt(hoursStr, 10);
     const minutes = minutesStr ? parseInt(minutesStr, 10) : 0;
 
-    if (isNaN(hours) || isNaN(minutes)) return 9999;
+    // If parsing fails for some reason, return a default sort value.
+    if (isNaN(hours)) {
+        return 9997;
+    }
 
     if (period === 'pm' && hours !== 12) {
         hours += 12;
-    } else if (period === 'am' && hours === 12) {
+    } else if (period === 'am' && hours === 12) { // Midnight case
         hours = 0;
     }
+
+    // Ensure hours are within a 24-hour range
+    if (hours >= 24) hours = 23;
 
     return hours * 60 + minutes;
 }
@@ -124,10 +140,12 @@ export function ItineraryDisplay({ itinerary, preferences, onRestart }: Itinerar
     }, 100);
   };
   
+  // Create a sorted version of the itinerary without mutating the original prop
   const sortedItinerary = {
       ...itinerary,
       days: itinerary.days.map(day => ({
           ...day,
+          // Use the robust parsing function to sort activities chronologically
           activities: [...day.activities].sort((a, b) => parseTimeToMinutes(a.time) - parseTimeToMinutes(b.time)),
       })),
   };
