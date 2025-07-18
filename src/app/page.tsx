@@ -41,49 +41,44 @@ export default function Home() {
       return;
     }
 
-    console.log(`Starting polling for sessionId: ${sessionId}`);
     let attempts = 0;
     const maxAttempts = 60; // Poll for 3 minutes (60 attempts * 3 seconds)
+    let timedOut = false;
 
 
     pollingIntervalRef.current = setInterval(async () => {
+      // Stop polling if we've already timed out or succeeded
+      if (timedOut || !pollingIntervalRef.current) {
+        return;
+      }
+      
       attempts++;
       try {
-        console.log(`Polling attempt ${attempts} for sessionId: ${sessionId}`);
         const result = await pollForResult(sessionId);
 
         if (result.itinerary) {
-          console.log("Itinerary found:", result.itinerary);
+          cleanupPolling();
           setItinerary(result.itinerary);
           setIsLoading(false);
-          cleanupPolling();
         } else if (result.error) {
-          console.error("Error received during polling:", result.error);
+          cleanupPolling();
           setError(result.error);
           setIsLoading(false);
-          cleanupPolling();
-        } else if (result.status === 'pending') {
-            console.log("Still waiting for itinerary...");
-            if (attempts >= maxAttempts) {
-                 console.warn(`Polling timed out after ${maxAttempts} attempts for sessionId: ${sessionId}`);
-                 setError("The request timed out. The generation service might be busy or failed to respond. Please try again later.");
-                 setIsLoading(false);
-                 cleanupPolling();
-            }
-        } else {
-            console.warn("Unexpected polling response:", result);
+        } else if (attempts >= maxAttempts) {
+            timedOut = true;
+            cleanupPolling();
+            setError("The request timed out. The generation service might be busy or failed to respond. Please try again later.");
+            setIsLoading(false);
         }
       } catch (err) {
-        console.error("Polling failed:", err);
+        cleanupPolling();
         const errorMessage = err instanceof Error ? err.message : "An unknown error occurred during polling.";
         setError(errorMessage);
         setIsLoading(false);
-        cleanupPolling();
       }
     }, 3000); // Poll every 3 seconds
 
     return () => {
-      console.log(`Cleaning up polling for sessionId: ${sessionId}`);
       cleanupPolling();
     };
   }, [sessionId, isLoading, cleanupPolling]);

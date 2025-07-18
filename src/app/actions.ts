@@ -20,11 +20,9 @@ function getAppUrl() {
 export async function generateItinerary(
   data: TravelPreference
 ): Promise<{ success: true; sessionId: string } | { success: false; error: string }> {
-  console.log('generateItinerary action started.');
 
   try {
     const validatedData = travelPreferenceSchema.parse(data);
-    console.log('Travel preference data validated successfully.');
 
     const sessionId = uuidv4();
     const n8nWebhookUrl = process.env.N8N_WEBHOOK_URL;
@@ -37,8 +35,6 @@ export async function generateItinerary(
 
     const appUrl = getAppUrl();
     const callbackUrl = `${appUrl.replace(/\/$/, '')}/api/webhook?sessionId=${sessionId}`;
-    
-    console.log("Using n8n Webhook URL:", n8nWebhookUrl);
     
     const headers: HeadersInit = {
       'Content-Type': 'application/json',
