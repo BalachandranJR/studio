@@ -34,8 +34,8 @@ const LoadingAnimation = () => {
             description: "Our AI is analyzing thousands of locations to find the perfect match for your interests."
         },
         {
-            image: "https://images.unsplash.com/photo-1555939594-58d7cb561ad1?q=80&w=1800",
-            hint: "restaurant food",
+            image: "https://images.unsplash.com/photo-1528605248644-14dd04022da1?q=80&w=1800",
+            hint: "food market",
             title: "Crafting your culinary journey...",
             description: "We're picking out the best restaurants and local eateries based on your preferences."
         },
