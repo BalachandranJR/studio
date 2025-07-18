@@ -62,6 +62,15 @@ export const travelPreferenceSchema = z.object({
   budget: z.object({
     currency: z.string().min(1, "Please select a currency."),
     amount: z.coerce.number({invalid_type_error: "Please enter a valid number."}).min(1, "Budget must be at least 1."),
+    otherCurrency: z.string().optional(),
+  }).refine(data => {
+    if (data.currency === 'OTHER') {
+        return data.otherCurrency && data.otherCurrency.length > 0;
+    }
+    return true;
+  }, {
+    message: "Please specify the currency code.",
+    path: ["otherCurrency"],
   }),
   transport: z.array(z.string()).refine((value) => value.some((item) => item), {
     message: "You have to select at least one transport preference.",
@@ -102,3 +111,5 @@ export const ItinerarySchema = z.object({
 export type Activity = z.infer<typeof ActivitySchema>;
 export type ItineraryDay = z.infer<typeof ItineraryDaySchema>;
 export type Itinerary = z.infer<typeof ItinerarySchema>;
+
+    

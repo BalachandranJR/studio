@@ -47,8 +47,19 @@ const currencies = [
     { value: 'AUD', label: 'AUD - Australian Dollar' },
     { value: 'CHF', label: 'CHF - Swiss Franc' },
     { value: 'CNY', label: 'CNY - Chinese Yuan' },
-    { value: 'SEK', label: 'SEK - Swedish Krona' },
+    { value: 'INR', label: 'INR - Indian Rupee' },
+    { value: 'BRL', label: 'BRL - Brazilian Real' },
+    { value: 'RUB', label: 'RUB - Russian Ruble' },
+    { value: 'ZAR', label: 'ZAR - South African Rand' },
+    { value: 'MXN', label: 'MXN - Mexican Peso' },
+    { value: 'SGD', label: 'SGD - Singapore Dollar' },
+    { value: 'HKD', label: 'HKD - Hong Kong Dollar' },
     { value: 'NZD', label: 'NZD - New Zealand Dollar' },
+    { value: 'SEK', label: 'SEK - Swedish Krona' },
+    { value: 'NOK', label: 'NOK - Norwegian Krone' },
+    { value: 'KRW', label: 'KRW - South Korean Won' },
+    { value: 'TRY', label: 'TRY - Turkish Lira' },
+    { value: 'OTHER', label: 'Other...' },
 ];
 
 export function TravelPreferenceForm({ onSubmit, isPending }: TravelPreferenceFormProps) {
@@ -63,6 +74,7 @@ export function TravelPreferenceForm({ onSubmit, isPending }: TravelPreferenceFo
       budget: {
         currency: 'USD',
         amount: "1000",
+        otherCurrency: "",
       },
       transport: [],
       otherTransport: "",
@@ -70,6 +82,8 @@ export function TravelPreferenceForm({ onSubmit, isPending }: TravelPreferenceFo
       otherFoodPreferences: "",
     },
   });
+
+  const watchedCurrency = form.watch("budget.currency");
 
   function onFormSubmit(data: TravelPreference) {
     onSubmit(data);
@@ -342,6 +356,23 @@ export function TravelPreferenceForm({ onSubmit, isPending }: TravelPreferenceFo
                     )}
                 />
             </div>
+             {watchedCurrency === 'OTHER' && (
+              <div className="mt-4">
+                <FormField
+                  control={form.control}
+                  name="budget.otherCurrency"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Other Currency</FormLabel>
+                      <FormControl>
+                        <Input placeholder="e.g., THB" {...field} />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              </div>
+            )}
           </CardContent>
         </Card>
 
@@ -501,3 +532,5 @@ export function TravelPreferenceForm({ onSubmit, isPending }: TravelPreferenceFo
     </Form>
   );
 }
+
+    
