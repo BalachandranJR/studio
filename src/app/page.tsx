@@ -25,7 +25,7 @@ async function pollForResult(sessionId: string): Promise<{itinerary?: Itinerary,
 }
 
 const LoadingAnimation = () => {
-    const [emblaRef] = useEmblaCarousel({ loop: true }, [Autoplay({ delay: 4000 })]);
+    const [emblaRef] = useEmblaCarousel({ loop: true }, [Autoplay({ delay: 4000, stopOnInteraction: false })]);
 
     const quotes = [
         { quote: "Travel is the only thing you buy that makes you richer.", author: "Anonymous" },
