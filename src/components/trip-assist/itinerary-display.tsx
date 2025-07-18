@@ -80,6 +80,39 @@ const TripSummary = ({ preferences }: { preferences: TravelPreference }) => {
     );
 };
 
+function parseTimeToMinutes(timeStr: string): number {
+    const lowerTime = timeStr.toLowerCase();
+
+    // Handle generic time periods
+    if (lowerTime.includes('morning')) return 8 * 60; // 8:00 AM
+    if (lowerTime.includes('afternoon')) return 13 * 60; // 1:00 PM
+    if (lowerTime.includes('evening') || lowerTime.includes('night')) return 19 * 60; // 7:00 PM
+    if (lowerTime.includes('lunch')) return 12 * 60; // 12:00 PM
+    if (lowerTime.includes('dinner')) return 19 * 60; // 7:00 PM
+
+    const match = lowerTime.match(/(\d{1,2}):?(\d{2})?\s*(am|pm)?/);
+    if (!match) return 9999; // Should sort to the end if unparseable
+
+    let [_, hoursStr, minutesStr, period] = match;
+    let hours = parseInt(hoursStr, 10);
+    const minutes = minutesStr ? parseInt(minutesStr, 10) : 0;
+
+    if (period === 'pm' && hours !== 12) {
+        hours += 12;
+    } else if (period === 'am' && hours === 12) {
+        hours = 0; // Midnight case
+    }
+    
+    // If no period is specified, guess based on hour
+    if (!period) {
+        if (hours >= 1 && hours <= 6) { // e.g. "1:00" is likely afternoon
+            hours += 12;
+        }
+    }
+
+    return hours * 60 + minutes;
+}
+
 
 export function ItineraryDisplay({ itinerary, preferences, onRestart }: ItineraryDisplayProps) {
   const [openDays, setOpenDays] = useState<string[]>(['day-1']);
@@ -93,6 +126,14 @@ export function ItineraryDisplay({ itinerary, preferences, onRestart }: Itinerar
     setTimeout(() => {
         window.print();
     }, 100);
+  };
+  
+  const sortedItinerary = {
+      ...itinerary,
+      days: itinerary.days.map(day => ({
+          ...day,
+          activities: [...day.activities].sort((a, b) => parseTimeToMinutes(a.time) - parseTimeToMinutes(b.time)),
+      })),
   };
 
   return (
@@ -115,7 +156,7 @@ export function ItineraryDisplay({ itinerary, preferences, onRestart }: Itinerar
           </CardHeader>
           <CardContent>
             <Accordion type="multiple" value={openDays} onValueChange={setOpenDays} className="w-full">
-              {itinerary.days.map((day, dayIndex) => (
+              {sortedItinerary.days.map((day, dayIndex) => (
                 <AccordionItem value={`day-${day.day}`} key={dayIndex}>
                   <AccordionTrigger className="font-headline text-lg">
                     Day {day.day}: {day.date}
