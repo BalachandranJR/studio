@@ -2,12 +2,12 @@
 "use client";
 
 import { useEffect, useState, useCallback, useRef } from "react";
-import { PlaneTakeoff, Loader2 } from "lucide-react";
+import { PlaneTakeoff, Loader2, Send } from "lucide-react";
 
 import { generateItinerary } from "@/app/actions";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { ItineraryDisplay, ItinerarySkeleton } from "@/components/trip-assist/itinerary-display";
+import { ItineraryDisplay } from "@/components/trip-assist/itinerary-display";
 import { TravelPreferenceForm } from "@/components/trip-assist/travel-preference-form";
 import type { Itinerary, TravelPreference } from "@/lib/types";
 import { Button } from "@/components/ui/button";
@@ -21,9 +21,22 @@ async function pollForResult(sessionId: string): Promise<{itinerary?: Itinerary,
     return data;
 }
 
+const LoadingAnimation = () => (
+    <div className="flex flex-col items-center justify-center space-y-4 rounded-lg border bg-card text-card-foreground shadow-sm p-8 text-center">
+        <div className="relative w-full h-16 overflow-hidden">
+            <div className="absolute top-1/2 -translate-y-1/2 animate-fly">
+                <Send className="w-12 h-12 text-primary -rotate-45" />
+            </div>
+        </div>
+        <h3 className="text-xl font-semibold">Generating your custom itinerary...</h3>
+        <p className="text-muted-foreground">Our AI is planning your perfect trip. This may take a minute or two.</p>
+    </div>
+);
+
+
 export default function Home() {
+  const [appState, setAppState] = useState<'initial' | 'form' | 'loading' | 'result' | 'error'>('initial');
   const [itinerary, setItinerary] = useState<Itinerary | null>(null);
-  const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [sessionId, setSessionId] = useState<string | null>(null);
   const pollingIntervalRef = useRef<NodeJS.Timeout | null>(null);
@@ -35,56 +48,58 @@ export default function Home() {
     }
   }, []);
 
-  useEffect(() => {
-    if (!sessionId || !isLoading) {
-      cleanupPolling();
-      return;
-    }
-
+  const startPolling = useCallback((sid: string) => {
+    cleanupPolling();
+    
     let attempts = 0;
-    const maxAttempts = 100; // Poll for 5 minutes (100 attempts * 3 seconds)
-    let timedOut = false;
+    const maxAttempts = 100; // Poll for 5 minutes
 
-
-    pollingIntervalRef.current = setInterval(async () => {
-      // Stop polling if we've already timed out or succeeded
-      if (timedOut || !pollingIntervalRef.current) {
-        return;
-      }
-      
-      attempts++;
-      try {
-        const result = await pollForResult(sessionId);
-
-        if (result.itinerary) {
-          cleanupPolling();
-          setItinerary(result.itinerary);
-          setIsLoading(false);
-        } else if (result.error) {
-          cleanupPolling();
-          setError(result.error);
-          setIsLoading(false);
-        } else if (attempts >= maxAttempts) {
-            timedOut = true;
+    const poll = async () => {
+        if (attempts >= maxAttempts) {
             cleanupPolling();
             setError("The request timed out. The generation service might be busy or failed to respond. Please try again later.");
-            setIsLoading(false);
+            setAppState('error');
+            return;
         }
-      } catch (err) {
-        cleanupPolling();
-        const errorMessage = err instanceof Error ? err.message : "An unknown error occurred during polling.";
-        setError(errorMessage);
-        setIsLoading(false);
-      }
-    }, 3000); // Poll every 3 seconds
+        
+        attempts++;
 
+        try {
+            const result = await pollForResult(sid);
+
+            if (result.itinerary) {
+                cleanupPolling();
+                setItinerary(result.itinerary);
+                setAppState('result');
+            } else if (result.error) {
+                cleanupPolling();
+                setError(result.error);
+                setAppState('error');
+            } else {
+                pollingIntervalRef.current = setTimeout(poll, 3000);
+            }
+        } catch (err) {
+            cleanupPolling();
+            const errorMessage = err instanceof Error ? err.message : "An unknown error occurred during polling.";
+            setError(errorMessage);
+            setAppState('error');
+        }
+    };
+    
+    pollingIntervalRef.current = setTimeout(poll, 3000);
+
+  }, [cleanupPolling]);
+
+
+  useEffect(() => {
     return () => {
       cleanupPolling();
     };
-  }, [sessionId, isLoading, cleanupPolling]);
+  }, [cleanupPolling]);
+
 
   const handleFormSubmit = async (data: TravelPreference) => {
-    setIsLoading(true);
+    setAppState('loading');
     setError(null);
     setItinerary(null);
     setSessionId(null);
@@ -93,18 +108,19 @@ export default function Home() {
 
     if (result.success) {
       setSessionId(result.sessionId);
+      startPolling(result.sessionId);
     } else {
       console.error("Error from generateItinerary action:", result.error);
       setError(result.error);
-      setIsLoading(false);
+      setAppState('error');
     }
   };
   
   const resetApp = () => {
     setItinerary(null);
-    setIsLoading(false);
     setError(null);
     setSessionId(null);
+    setAppState('initial');
     cleanupPolling();
   };
   
@@ -123,29 +139,32 @@ export default function Home() {
       </header>
 
       <div className="max-w-4xl mx-auto">
-        {!isLoading && !itinerary && !error && (
+        {appState === 'initial' && (
+            <div className="text-center space-y-6">
+                 <p className="text-xl text-muted-foreground">Ready for your next adventure? Let our AI craft a personalized itinerary just for you.</p>
+                <Button size="lg" onClick={() => setAppState('form')}>
+                    Get Started
+                </Button>
+            </div>
+        )}
+
+        {appState === 'form' && (
           <Card>
             <CardHeader>
               <CardTitle className="font-headline text-2xl">Plan Your Next Adventure</CardTitle>
               <CardDescription>Fill out the form below to generate a custom itinerary.</CardDescription>
             </CardHeader>
             <CardContent>
-              <TravelPreferenceForm onSubmit={handleFormSubmit} isPending={isLoading} />
+              <TravelPreferenceForm onSubmit={handleFormSubmit} isPending={appState === 'loading'} />
             </CardContent>
           </Card>
         )}
 
-        {isLoading && (
-          <div>
-            <p className="text-center text-lg font-semibold mb-4 flex items-center justify-center gap-2">
-              <Loader2 className="h-5 w-5 animate-spin" />
-              Generating your itinerary... This may take a moment.
-            </p>
-            <ItinerarySkeleton />
-          </div>
+        {appState === 'loading' && (
+          <LoadingAnimation />
         )}
         
-        {error && !isLoading && (
+        {appState === 'error' && (
            <div className="space-y-4 text-center">
             <Alert variant="destructive">
               <AlertTitle>Error Generating Itinerary</AlertTitle>
@@ -160,7 +179,7 @@ export default function Home() {
            </div>
         )}
 
-        {itinerary && !isLoading && (
+        {appState === 'result' && itinerary && (
           <div className="mt-8">
             <ItineraryDisplay itinerary={itinerary} onRestart={resetApp} />
           </div>

@@ -88,10 +88,17 @@ export default {
             height: '0',
           },
         },
+        'fly': {
+          '0%': { left: '-20%', opacity: '0' },
+          '20%': { left: '20%', opacity: '1' },
+          '80%': { left: '80%', opacity: '1' },
+          '100%': { left: '120%', opacity: '0' },
+        }
       },
       animation: {
         'accordion-down': 'accordion-down 0.2s ease-out',
         'accordion-up': 'accordion-up 0.2s ease-out',
+        'fly': 'fly 2.5s ease-in-out infinite',
       },
     },
   },

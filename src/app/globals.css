@@ -94,12 +94,21 @@ body {
     }
     body {
       background-color: white !important;
+      -webkit-print-color-adjust: exact;
+      print-color-adjust: exact;
     }
     .printable-area {
       position: absolute;
       left: 0;
       top: 0;
       width: 100%;
+    }
+    .printable-area [data-state="closed"] {
+      display: none;
+    }
+    .printable-area [data-state="open"] > div:last-child {
+       max-height: fit-content !important;
+       overflow: visible !important;
     }
   }
 }

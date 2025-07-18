@@ -1,6 +1,7 @@
 
 "use client";
 
+import { useState } from "react";
 import { format, parseISO } from "date-fns";
 import { Download, RotateCcw, Calendar as CalendarIcon, Clock, MapPin, DollarSign, Bus } from "lucide-react";
 
@@ -42,8 +43,17 @@ const ActivityDetail = ({ icon: Icon, label, value }: { icon: React.ElementType,
 
 
 export function ItineraryDisplay({ itinerary, onRestart }: ItineraryDisplayProps) {
+  const [openDays, setOpenDays] = useState<string[]>(['day-1']);
+  
   const handleDownload = () => {
-    window.print();
+    // Before printing, open all accordions
+    const allDayKeys = itinerary.days.map(day => `day-${day.day}`);
+    setOpenDays(allDayKeys);
+
+    // Allow state to update and then print
+    setTimeout(() => {
+        window.print();
+    }, 100);
   };
 
   return (
@@ -64,7 +74,7 @@ export function ItineraryDisplay({ itinerary, onRestart }: ItineraryDisplayProps
             </CardDescription>
           </CardHeader>
           <CardContent>
-            <Accordion type="single" collapsible defaultValue="day-1" className="w-full">
+            <Accordion type="multiple" value={openDays} onValueChange={setOpenDays} className="w-full">
               {itinerary.days.map((day, dayIndex) => (
                 <AccordionItem value={`day-${day.day}`} key={dayIndex}>
                   <AccordionTrigger className="font-headline text-lg">
