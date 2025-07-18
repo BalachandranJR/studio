@@ -3,6 +3,8 @@
 
 import { useEffect, useState, useCallback, useRef } from "react";
 import { PlaneTakeoff, Loader2, Send } from "lucide-react";
+import useEmblaCarousel from 'embla-carousel-react';
+import Image from 'next/image';
 
 import { generateItinerary } from "@/app/actions";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
@@ -21,22 +23,77 @@ async function pollForResult(sessionId: string): Promise<{itinerary?: Itinerary,
     return data;
 }
 
-const LoadingAnimation = () => (
-    <div className="flex flex-col items-center justify-center space-y-4 rounded-lg border bg-card text-card-foreground shadow-sm p-8 text-center">
-        <div className="relative w-full h-16 overflow-hidden">
-            <div className="absolute top-1/2 -translate-y-1/2 animate-fly">
-                <Send className="w-12 h-12 text-primary -rotate-45" />
-            </div>
-        </div>
-        <h3 className="text-xl font-semibold">Generating your custom itinerary...</h3>
-        <p className="text-muted-foreground">Our AI is planning your perfect trip. This may take a minute or two.</p>
-    </div>
-);
+const LoadingAnimation = () => {
+    const [emblaRef] = useEmblaCarousel({ loop: true }, []);
+
+    const slides = [
+        {
+            image: "https://placehold.co/600x400.png",
+            hint: "city skyline",
+            title: "Finding the best spots...",
+            description: "Our AI is analyzing thousands of locations to find the perfect match for your interests."
+        },
+        {
+            image: "https://placehold.co/600x400.png",
+            hint: "restaurant food",
+            title: "Crafting your culinary journey...",
+            description: "We're picking out the best restaurants and local eateries based on your preferences."
+        },
+        {
+            image: "https://placehold.co/600x400.png",
+            hint: "historic landmark",
+            title: "Planning your daily activities...",
+            description: "Each day is being filled with exciting activities, from famous landmarks to hidden gems."
+        },
+        {
+            image: "https://placehold.co/600x400.png",
+            hint: "travel map",
+            title: "Finalizing the details...",
+            description: "Just a few more moments while we put the finishing touches on your personalized trip."
+        }
+    ];
+
+    return (
+        <Card className="overflow-hidden">
+            <CardContent className="p-0">
+                <div className="overflow-hidden" ref={emblaRef}>
+                    <div className="flex">
+                        {slides.map((slide, index) => (
+                            <div className="relative min-w-0 flex-[0_0_100%]" key={index}>
+                                <Image
+                                    src={slide.image}
+                                    alt={slide.title}
+                                    width={600}
+                                    height={400}
+                                    className="w-full h-auto aspect-[3/2] object-cover"
+                                    data-ai-hint={slide.hint}
+                                />
+                                <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent" />
+                                <div className="absolute bottom-0 left-0 p-6 text-white">
+                                    <h3 className="text-xl font-bold">{slide.title}</h3>
+                                    <p className="text-sm text-white/80">{slide.description}</p>
+                                </div>
+                            </div>
+                        ))}
+                    </div>
+                </div>
+                <div className="p-6 text-center space-y-2">
+                    <h3 className="text-2xl font-semibold flex items-center justify-center gap-2">
+                         <Loader2 className="w-6 h-6 animate-spin" />
+                         Generating your custom itinerary...
+                    </h3>
+                    <p className="text-muted-foreground">Our AI is planning your perfect trip. This may take a minute or two.</p>
+                </div>
+            </CardContent>
+        </Card>
+    );
+};
 
 
 export default function Home() {
   const [appState, setAppState] = useState<'initial' | 'form' | 'loading' | 'result' | 'error'>('initial');
   const [itinerary, setItinerary] = useState<Itinerary | null>(null);
+  const [submittedPreferences, setSubmittedPreferences] = useState<TravelPreference | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [sessionId, setSessionId] = useState<string | null>(null);
   const pollingIntervalRef = useRef<NodeJS.Timeout | null>(null);
@@ -103,6 +160,7 @@ export default function Home() {
     setError(null);
     setItinerary(null);
     setSessionId(null);
+    setSubmittedPreferences(data);
     
     const result = await generateItinerary(data);
 
@@ -120,10 +178,15 @@ export default function Home() {
     setItinerary(null);
     setError(null);
     setSessionId(null);
-    setAppState('initial');
+    setSubmittedPreferences(null);
+    setAppState('form'); // Go back to form, not initial screen
     cleanupPolling();
   };
   
+  const startForm = () => {
+    setAppState('form');
+  }
+
   return (
     <main className="container mx-auto px-4 py-8 md:py-12">
       <header className="text-center mb-12">
@@ -140,9 +203,10 @@ export default function Home() {
 
       <div className="max-w-4xl mx-auto">
         {appState === 'initial' && (
-            <div className="text-center space-y-6">
-                 <p className="text-xl text-muted-foreground">Ready for your next adventure? Let our AI craft a personalized itinerary just for you.</p>
-                <Button size="lg" onClick={() => setAppState('form')}>
+            <div className="text-center space-y-6 bg-card border rounded-lg p-8">
+                 <h2 className="text-2xl font-semibold">Ready for your next adventure?</h2>
+                 <p className="text-lg text-muted-foreground">Let our AI craft a personalized itinerary just for you.</p>
+                <Button size="lg" onClick={startForm}>
                     Get Started
                 </Button>
             </div>
@@ -179,9 +243,9 @@ export default function Home() {
            </div>
         )}
 
-        {appState === 'result' && itinerary && (
-          <div className="mt-8">
-            <ItineraryDisplay itinerary={itinerary} onRestart={resetApp} />
+        {appState === 'result' && itinerary && submittedPreferences && (
+          <div className="mt-8 space-y-8">
+            <ItineraryDisplay itinerary={itinerary} preferences={submittedPreferences} onRestart={resetApp} />
           </div>
         )}
       </div>

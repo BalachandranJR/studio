@@ -3,7 +3,7 @@
 
 import { useState } from "react";
 import { format, parseISO } from "date-fns";
-import { Download, RotateCcw, Calendar as CalendarIcon, Clock, MapPin, DollarSign, Bus } from "lucide-react";
+import { Download, RotateCcw, Calendar as CalendarIcon, Clock, MapPin, DollarSign, Bus, Users, Utensils, Sparkles, Wallet, Plane } from "lucide-react";
 
 import { ItineraryIcon } from "@/components/icons";
 import {
@@ -23,10 +23,12 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
-import type { Itinerary, Activity } from "@/lib/types";
+import type { Itinerary, Activity, TravelPreference } from "@/lib/types";
+import { ageGroups, areasOfInterest, transportOptions, foodPreferences } from "@/lib/types";
 
 interface ItineraryDisplayProps {
   itinerary: Itinerary;
+  preferences: TravelPreference;
   onRestart: () => void;
 }
 
@@ -41,8 +43,45 @@ const ActivityDetail = ({ icon: Icon, label, value }: { icon: React.ElementType,
   );
 };
 
+const SummaryDetail = ({ icon: Icon, label, value }: { icon: React.ElementType, label: string, value: string | React.ReactNode }) => {
+    return (
+        <div className="flex items-start">
+            <Icon className="h-5 w-5 mr-3 mt-1 text-primary shrink-0" />
+            <div>
+                <p className="font-semibold text-sm">{label}</p>
+                <div className="text-muted-foreground text-sm">{value}</div>
+            </div>
+        </div>
+    );
+};
 
-export function ItineraryDisplay({ itinerary, onRestart }: ItineraryDisplayProps) {
+const TripSummary = ({ preferences }: { preferences: TravelPreference }) => {
+    const getLabels = (ids: string[] | undefined, options: readonly {id: string, label: string}[]) => {
+        if (!ids || ids.length === 0) return 'None specified';
+        return ids.map(id => options.find(opt => opt.id === id)?.label).filter(Boolean).join(', ');
+    };
+    
+    return (
+        <Card>
+            <CardHeader>
+                <CardTitle>Trip Summary</CardTitle>
+                <CardDescription>A summary of the preferences used for this itinerary.</CardDescription>
+            </CardHeader>
+            <CardContent>
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                    <SummaryDetail icon={Users} label="Travelers" value={`${preferences.numPeople} person(s) - ${getLabels(preferences.ageGroups, ageGroups)}`} />
+                    <SummaryDetail icon={Wallet} label="Budget" value={`${preferences.budget.amount} ${preferences.budget.currency} per person`} />
+                    <SummaryDetail icon={Plane} label="Transport" value={getLabels(preferences.transport, transportOptions)} />
+                    <SummaryDetail icon={Sparkles} label="Interests" value={getLabels(preferences.interests, areasOfInterest)} />
+                    <SummaryDetail icon={Utensils} label="Food Preferences" value={getLabels(preferences.foodPreferences, foodPreferences)} />
+                </div>
+            </CardContent>
+        </Card>
+    );
+};
+
+
+export function ItineraryDisplay({ itinerary, preferences, onRestart }: ItineraryDisplayProps) {
   const [openDays, setOpenDays] = useState<string[]>(['day-1']);
   
   const handleDownload = () => {
@@ -58,7 +97,8 @@ export function ItineraryDisplay({ itinerary, onRestart }: ItineraryDisplayProps
 
   return (
     <>
-      <div className="printable-area">
+      <div className="printable-area space-y-8">
+        <TripSummary preferences={preferences} />
         <Card className="w-full">
           <CardHeader>
             <Badge variant="secondary" className="w-fit">Trip Itinerary</Badge>
