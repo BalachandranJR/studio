@@ -9,14 +9,16 @@ import { travelPreferenceSchema } from '@/lib/types';
 
 function getAppUrl() {
   const appUrl = process.env.NEXT_PUBLIC_APP_URL;
-  if (appUrl) {
-    console.log(`Using NEXT_PUBLIC_APP_URL: ${appUrl}`);
-    return appUrl.startsWith('http') ? appUrl : `https://${appUrl}`;
+  if (!appUrl) {
+    console.error('CRITICAL: NEXT_PUBLIC_APP_URL is not set. Using fallback for local dev.');
+    return 'http://localhost:9002';
   }
   
-  const defaultUrl = 'http://localhost:9002';
-  console.log(`Warning: NEXT_PUBLIC_APP_URL not set. Falling back to default for local development: ${defaultUrl}`);
-  return defaultUrl;
+  // Ensure the URL does not have a trailing slash to prevent double slashes.
+  const cleanedUrl = appUrl.endsWith('/') ? appUrl.slice(0, -1) : appUrl;
+  
+  console.log(`Using app URL: ${cleanedUrl}`);
+  return cleanedUrl.startsWith('http') ? cleanedUrl : `https://${cleanedUrl}`;
 }
 
 export async function generateItinerary(
@@ -46,7 +48,7 @@ export async function generateItinerary(
     const headers: HeadersInit = {
       'Content-Type': 'application/json',
     };
-    
+
     const response = await fetch(n8nWebhookUrl, {
       method: 'POST',
       headers: headers,
