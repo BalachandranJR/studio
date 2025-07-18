@@ -8,19 +8,14 @@ import type { TravelPreference } from '@/lib/types';
 import { travelPreferenceSchema } from '@/lib/types';
 
 function getAppUrl() {
-  if (process.env.NEXT_PUBLIC_APP_URL) {
-    console.log(`Using NEXT_PUBLIC_APP_URL: ${process.env.NEXT_PUBLIC_APP_URL}`);
-    return process.env.NEXT_PUBLIC_APP_URL;
-  }
-  
-  if (process.env.VERCEL_URL) {
-    const url = `https://${process.env.VERCEL_URL}`;
-    console.log(`Using VERCEL_URL to construct URL: ${url}`);
-    return url;
+  const appUrl = process.env.NEXT_PUBLIC_APP_URL;
+  if (appUrl) {
+    console.log(`Using NEXT_PUBLIC_APP_URL: ${appUrl}`);
+    return appUrl.startsWith('http') ? appUrl : `https://${appUrl}`;
   }
   
   const defaultUrl = 'http://localhost:9002';
-  console.log(`Falling back to default URL: ${defaultUrl}`);
+  console.log(`Warning: NEXT_PUBLIC_APP_URL not set. Falling back to default for local development: ${defaultUrl}`);
   return defaultUrl;
 }
 
@@ -46,15 +41,12 @@ export async function generateItinerary(
     const callbackUrl = `${appUrl}/api/webhook?sessionId=${sessionId}`;
     
     console.log("Using n8n Webhook URL:", n8nWebhookUrl);
-    console.log("Constructed App URL:", appUrl);
-    console.log("Using Callback URL:", callbackUrl);
+    console.log("Using Callback URL for n8n:", callbackUrl);
 
     const headers: HeadersInit = {
       'Content-Type': 'application/json',
     };
-
-    console.log('Sending request to n8n with headers:', JSON.stringify(headers));
-
+    
     const response = await fetch(n8nWebhookUrl, {
       method: 'POST',
       headers: headers,
@@ -84,5 +76,3 @@ export async function generateItinerary(
     return { success: false, error: errorMessage };
   }
 }
-
-    
