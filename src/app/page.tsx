@@ -26,59 +26,44 @@ async function pollForResult(sessionId: string): Promise<{itinerary?: Itinerary,
 const LoadingAnimation = () => {
     const [emblaRef] = useEmblaCarousel({ loop: true });
 
-    const slides = [
-        {
-            image: "https://images.unsplash.com/photo-1520106212290-d5a2862e7453?q=80&w=1800",
-            hint: "city skyline",
-            title: "Finding the best spots...",
-            description: "Our AI is analyzing thousands of locations to find the perfect match for your interests."
-        },
-        {
-            image: "https://images.unsplash.com/photo-1528605248644-14dd04022da1?q=80&w=1800",
-            hint: "food market",
-            title: "Crafting your culinary journey...",
-            description: "We're picking out the best restaurants and local eateries based on your preferences."
-        },
-        {
-            image: "https://images.unsplash.com/photo-1542359649-31e03cdde4fe?q=80&w=1800",
-            hint: "historic landmark",
-            title: "Planning your daily activities...",
-            description: "Each day is being filled with exciting activities, from famous landmarks to hidden gems."
-        },
-        {
-            image: "https://images.unsplash.com/photo-1528732263441-2b990b561e1b?q=80&w=1800",
-            hint: "travel map",
-            title: "Finalizing the details...",
-            description: "Just a few more moments while we put the finishing touches on your personalized trip."
-        }
+    const quotes = [
+        { quote: "Travel is the only thing you buy that makes you richer.", author: "Anonymous" },
+        { quote: "The world is a book and those who do not travel read only one page.", author: "Saint Augustine" },
+        { quote: "Life is short and the world is wide.", author: "Simon Raven" },
+        { quote: "Not all those who wander are lost.", author: "J.R.R. Tolkien" },
+        { quote: "Take only memories, leave only footprints.", author: "Chief Seattle" },
+        { quote: "Jobs fill your pocket, but adventures fill your soul.", author: "Jaime Lyn Beatty" },
+        { quote: "Travel far, travel wide, and travel often.", author: "Anonymous" },
+        { quote: "Wherever you go becomes a part of you somehow.", author: "Anita Desai" },
+        { quote: "Travel isn’t always pretty. It isn’t always comfortable. But that’s okay.", author: "Anthony Bourdain" },
+        { quote: "Collect moments, not things.", author: "Aarti Khurana" },
+        { quote: "We travel not to escape life, but for life not to escape us.", author: "Anonymous" },
+        { quote: "To travel is to live.", author: "Hans Christian Andersen" },
+        { quote: "Once a year, go someplace you’ve never been before.", author: "Dalai Lama" },
+        { quote: "Adventure may hurt you, but monotony will kill you.", author: "Anonymous" },
+        { quote: "The journey of a thousand miles begins with a single step.", author: "Lao Tzu" },
     ];
 
     return (
         <Card className="overflow-hidden">
             <CardContent className="p-0">
-                <div className="overflow-hidden" ref={emblaRef}>
-                    <div className="flex">
-                        {slides.map((slide, index) => (
-                            <div className="relative min-w-0 flex-[0_0_100%]" key={index}>
-                                <Image
-                                    src={slide.image}
-                                    alt={slide.title}
-                                    width={600}
-                                    height={400}
-                                    className="w-full h-auto aspect-[3/2] object-cover"
-                                    data-ai-hint={slide.hint}
-                                    priority={index === 0}
-                                />
-                                <div className="absolute inset-0 bg-gradient-to-t from-black/80 to-transparent" />
-                                <div className="absolute bottom-0 left-0 p-6 text-white">
-                                    <h3 className="text-xl font-bold">{slide.title}</h3>
-                                    <p className="text-sm text-white/80">{slide.description}</p>
-                                </div>
-                            </div>
-                        ))}
-                    </div>
+                <div className="bg-muted/40 py-12">
+                  <div className="overflow-hidden" ref={emblaRef}>
+                      <div className="flex">
+                          {quotes.map((item, index) => (
+                              <div className="relative min-w-0 flex-[0_0_100%] px-8" key={index}>
+                                  <div className="text-center h-40 flex flex-col justify-center">
+                                      <blockquote className="text-xl font-semibold italic text-foreground">
+                                          “{item.quote}”
+                                      </blockquote>
+                                      <cite className="mt-4 text-sm text-muted-foreground not-italic">— {item.author}</cite>
+                                  </div>
+                              </div>
+                          ))}
+                      </div>
+                  </div>
                 </div>
-                <div className="p-6 text-center space-y-2">
+                <div className="p-6 text-center space-y-2 border-t">
                     <h3 className="text-2xl font-semibold flex items-center justify-center gap-2">
                          <Loader2 className="w-6 h-6 animate-spin" />
                          Generating your custom itinerary...
