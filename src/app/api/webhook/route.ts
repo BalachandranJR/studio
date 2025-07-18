@@ -29,12 +29,17 @@ export async function POST(request: NextRequest) {
 
     if (body.error) {
        console.error(`[Webhook] n8n workflow returned an error for session ${sessionId}:`, body.error);
-       const errorMessage = body.error.message || 'An error occurred in the n8n workflow.';
-       resultCache.set(sessionId, { error: errorMessage });
+       const errorMessage = typeof body.error === 'object' ? JSON.stringify(body.error) : body.error;
+       resultCache.set(sessionId, { error: `An error occurred in the n8n workflow: ${errorMessage}` });
        return NextResponse.json({ success: true, message: "Error notification received and processed." });
     }
 
-    const itineraryData = body.itinerary || body;
+    // Explicitly check for the nested itinerary object, which is what n8n sends.
+    const itineraryData = body.itinerary;
+    if (!itineraryData) {
+        throw new Error("Payload from n8n is missing the 'itinerary' object.");
+    }
+    
     const validatedItinerary = ItinerarySchema.parse(itineraryData);
 
     console.log(`[Webhook] Successfully validated itinerary for sessionId: ${sessionId}, storing in cache.`);
@@ -52,8 +57,9 @@ export async function POST(request: NextRequest) {
     
     let errorMessage = 'Invalid itinerary data received.';
     if (error instanceof z.ZodError) {
-      errorMessage = "The itinerary data from the workflow has an invalid format.";
-      console.error("[Webhook] Zod validation details:", error.flatten());
+      // Provide detailed validation error logging
+      errorMessage = "The itinerary data from the workflow has an invalid format. Check server logs for details.";
+      console.error("[Webhook] Zod validation failed. Details:", JSON.stringify(error.flatten(), null, 2));
     } else if (error instanceof Error) {
       errorMessage = error.message;
     }
