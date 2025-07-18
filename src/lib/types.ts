@@ -89,7 +89,7 @@ export const ActivitySchema = z.object({
   type: z.string().describe("The category of the activity.").catch("activity"), 
   icon: z.string().describe("An icon name representing the activity type.").catch("default"),
   location: z.string().optional(),
-  cost: z.string().optional(),
+  cost: z.union([z.string(), z.number()]).optional(),
   transport: z.string().optional(),
   category: z.string().optional(),
 });
@@ -105,18 +105,18 @@ export const AccommodationSchema = z.object({
     name: z.string(),
     type: z.string(),
     location: z.string(),
-    costPerNight: z.string(),
-    totalCost: z.string(),
+    costPerNight: z.union([z.string(), z.number()]),
+    totalCost: z.union([z.string(), z.number()]),
     amenities: z.array(z.string()).optional(),
 });
 
 export const CostBreakdownSchema = z.object({
-    accommodation: z.string().optional(),
-    transport: z.string().optional(),
-    meals: z.string().optional(),
-    activities: z.string().optional(),
-    nightlife: z.string().optional(),
-    total: z.string(),
+    accommodation: z.union([z.string(), z.number()]).optional(),
+    transport: z.union([z.string(), z.number()]).optional(),
+    meals: z.union([z.string(), z.number()]).optional(),
+    activities: z.union([z.string(), z.number()]).optional(),
+    nightlife: z.union([z.string(), z.number()]).optional(),
+    total: z.union([z.string(), z.number()]),
     notes: z.string().optional(),
 });
 
