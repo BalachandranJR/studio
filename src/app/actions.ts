@@ -8,16 +8,20 @@ import type { TravelPreference } from '@/lib/types';
 import { travelPreferenceSchema } from '@/lib/types';
 
 function getAppUrl() {
-  // 1. Vercel deployment URL (prefer NEXT_PUBLIC_APP_URL if set).
   if (process.env.NEXT_PUBLIC_APP_URL) {
+    console.log(`Using NEXT_PUBLIC_APP_URL: ${process.env.NEXT_PUBLIC_APP_URL}`);
     return process.env.NEXT_PUBLIC_APP_URL;
   }
-  // 2. Vercel system variable.
+  
   if (process.env.VERCEL_URL) {
-    return `https://${process.env.VERCEL_URL}`;
+    const url = `https://${process.env.VERCEL_URL}`;
+    console.log(`Using VERCEL_URL to construct URL: ${url}`);
+    return url;
   }
-  // 3. Fallback for local development.
-  return 'http://localhost:9002';
+  
+  const defaultUrl = 'http://localhost:9002';
+  console.log(`Falling back to default URL: ${defaultUrl}`);
+  return defaultUrl;
 }
 
 export async function generateItinerary(
@@ -31,20 +35,12 @@ export async function generateItinerary(
 
     const sessionId = uuidv4();
     const n8nWebhookUrl = process.env.N8N_WEBHOOK_URL;
-    const n8nApiKey = process.env.N8N_API_KEY;
-
+    
     if (!n8nWebhookUrl) {
       const errorMessage = 'CRITICAL: N8N_WEBHOOK_URL is not set in environment variables.';
       console.error(errorMessage);
       return { success: false, error: 'The application is not configured to connect to the itinerary generation service. Please contact support.' };
     }
-
-    if (!n8nApiKey) {
-        const errorMessage = 'CRITICAL: N8N_API_KEY is not set in environment variables. Authentication is required.';
-        console.error(errorMessage);
-        return { success: false, error: 'The application is not configured for authentication with the itinerary service. Please contact support.' };
-    }
-
 
     const appUrl = getAppUrl();
     const callbackUrl = `${appUrl}/api/webhook?sessionId=${sessionId}`;
@@ -55,9 +51,9 @@ export async function generateItinerary(
 
     const headers: HeadersInit = {
       'Content-Type': 'application/json',
-      // This is the standard header name n8n's "Header Auth" expects.
-      'X-N8N-API-KEY': n8nApiKey,
     };
+
+    console.log('Sending request to n8n with headers:', JSON.stringify(headers));
 
     const response = await fetch(n8nWebhookUrl, {
       method: 'POST',
@@ -72,11 +68,7 @@ export async function generateItinerary(
         const errorBody = await response.text();
         const errorMessage = `n8n webhook call failed with status ${response.status}: ${errorBody}`;
         console.error(errorMessage);
-        // Provide a clearer message to the user
-        if (response.status === 401) {
-             return { success: false, error: `Authentication with the itinerary service failed. Please check the configured API key.` };
-        }
-        return { success: false, error: `There was a problem starting the itinerary generation (status: ${response.status}). The remote service might be unavailable.` };
+        return { success: false, error: `There was a problem starting the itinerary generation (status: ${response.status}). The remote service might be unavailable or requires authentication.` };
     }
     
     console.log("Successfully started n8n workflow. Session ID:", sessionId);
@@ -92,3 +84,5 @@ export async function generateItinerary(
     return { success: false, error: errorMessage };
   }
 }
+
+    
