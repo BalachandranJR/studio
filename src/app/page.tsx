@@ -12,93 +12,79 @@ import { TravelPreferenceForm } from "@/components/trip-assist/travel-preference
 import type { Itinerary, TravelPreference } from "@/lib/types";
 import { Button } from "@/components/ui/button";
 
+async function pollForResult(sessionId: string): Promise<{itinerary?: Itinerary, error?: string}> {
+    const response = await fetch(`/api/webhook?sessionId=${sessionId}`);
+    if (!response.ok) {
+        throw new Error(`Polling failed with status ${response.status}`);
+    }
+    const data = await response.json();
+    return data;
+}
+
 export default function Home() {
   const [itinerary, setItinerary] = useState<Itinerary | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [sessionId, setSessionId] = useState<string | null>(null);
-  
-  const eventSourceRef = useRef<EventSource | null>(null);
+  const pollingIntervalRef = useRef<NodeJS.Timeout | null>(null);
 
-  const cleanup = useCallback(() => {
-    if (eventSourceRef.current) {
-      eventSourceRef.current.close();
-      eventSourceRef.current = null;
+  const cleanupPolling = useCallback(() => {
+    if (pollingIntervalRef.current) {
+      clearInterval(pollingIntervalRef.current);
+      pollingIntervalRef.current = null;
     }
   }, []);
 
   useEffect(() => {
-    if (!sessionId) {
+    if (!sessionId || !isLoading) {
+      cleanupPolling();
       return;
     }
 
-    // Ensure any previous connection is closed before starting a new one.
-    cleanup();
+    console.log(`Starting polling for sessionId: ${sessionId}`);
 
-    const newEventSource = new EventSource(`/api/itinerary/stream?sessionId=${sessionId}`);
-    eventSourceRef.current = newEventSource;
-    console.log(`EventSource connected for session: ${sessionId}`);
+    pollingIntervalRef.current = setInterval(async () => {
+      try {
+        console.log(`Polling for sessionId: ${sessionId}`);
+        const result = await pollForResult(sessionId);
 
-    const timeoutId = setTimeout(() => {
-        console.warn("EventSource timed out.");
-        setError("The request timed out while waiting for a response. Please try again.");
-        setIsLoading(false);
-        cleanup();
-    }, 120000); // 2 minute timeout
-
-    newEventSource.onopen = () => {
-        console.log("EventSource connection established.");
-    };
-
-    newEventSource.onmessage = (event) => {
-        // Ignore keep-alive messages
-        if (event.data.startsWith(':')) {
-            console.log("Received keep-alive ping.");
-            return;
+        if (result.itinerary) {
+          console.log("Itinerary found:", result.itinerary);
+          setItinerary(result.itinerary);
+          setIsLoading(false);
+          cleanupPolling();
+        } else if (result.error) {
+          console.error("Error received during polling:", result.error);
+          setError(result.error);
+          setIsLoading(false);
+          cleanupPolling();
+        } else {
+            console.log("Still waiting for itinerary...");
         }
-        
-        console.log("EventSource data received:", event.data);
-        
-        try {
-            const data = JSON.parse(event.data);
-
-            if (data.error) {
-                console.error("Stream reported an error:", data.error);
-                setError(data.error);
-                setIsLoading(false);
-                clearTimeout(timeoutId);
-                cleanup();
-            } else if (data.itinerary) {
-                console.log("Itinerary received and setting state.");
-                setItinerary(data.itinerary);
-                setIsLoading(false);
-                clearTimeout(timeoutId);
-                cleanup();
-            }
-        } catch (e) {
-            console.error("Failed to parse message from EventSource:", e);
-            setError("Received invalid data from the server.");
-            setIsLoading(false);
-            clearTimeout(timeoutId);
-            cleanup();
-        }
-    };
-
-    newEventSource.onerror = (err) => {
-        console.error("EventSource encountered an error:", err);
-        setError("A connection error occurred. Please check your network and try again.");
+      } catch (err) {
+        console.error("Polling failed:", err);
+        const errorMessage = err instanceof Error ? err.message : "An unknown error occurred during polling.";
+        setError(errorMessage);
         setIsLoading(false);
-        clearTimeout(timeoutId);
-        cleanup();
-    };
+        cleanupPolling();
+      }
+    }, 3000); // Poll every 3 seconds
 
-    // Main cleanup function when the component unmounts or sessionId changes
+    const timeout = setTimeout(() => {
+        if (isLoading) {
+             console.warn(`Polling timed out for sessionId: ${sessionId}`);
+             setError("The request timed out while waiting for a response. The generation service might be busy. Please try again later.");
+             setIsLoading(false);
+             cleanupPolling();
+        }
+    }, 180000); // 3-minute timeout
+
     return () => {
-        console.log("Cleaning up EventSource due to component unmount or dependency change.");
-        clearTimeout(timeoutId);
-        cleanup();
+      console.log(`Cleaning up polling for sessionId: ${sessionId}`);
+      cleanupPolling();
+      clearTimeout(timeout);
     };
-  }, [sessionId, cleanup]);
+  }, [sessionId, isLoading, cleanupPolling]);
 
   const handleFormSubmit = async (data: TravelPreference) => {
     setIsLoading(true);
@@ -122,7 +108,7 @@ export default function Home() {
     setIsLoading(false);
     setError(null);
     setSessionId(null);
-    // The useEffect cleanup will handle the event source connection
+    cleanupPolling();
   };
   
   return (

@@ -1,10 +1,15 @@
+
 // src/app/api/webhook/route.ts
 import { NextRequest, NextResponse } from 'next/server';
-import { ItinerarySchema } from '@/lib/types';
-import { notifyListeners } from '@/lib/itinerary-events';
+import { ItinerarySchema, Itinerary } from '@/lib/types';
 import { z } from 'zod';
 
-// Ensure this endpoint is not cached and is treated as dynamic.
+// This is a simple in-memory cache. In a real-world serverless environment,
+// you would use a more persistent cache like Redis, Vercel KV, or a database.
+const resultCache = new Map<string, { itinerary?: Itinerary; error?: string }>();
+const CACHE_TTL = 5 * 60 * 1000; // 5 minutes
+
+// Ensure this endpoint is not cached by default and is treated as dynamic.
 export const dynamic = 'force-dynamic';
 
 export async function POST(request: NextRequest) {
@@ -12,7 +17,7 @@ export async function POST(request: NextRequest) {
   const sessionId = searchParams.get('sessionId');
 
   if (!sessionId) {
-    console.error('[Webhook] Error: No sessionId provided in query parameters.');
+    console.error('[Webhook] POST Error: No sessionId provided.');
     return NextResponse.json({ success: false, error: 'Session ID is required' }, { status: 400 });
   }
 
@@ -24,16 +29,22 @@ export async function POST(request: NextRequest) {
 
     if (body.error) {
        console.error(`[Webhook] n8n workflow returned an error for session ${sessionId}:`, body.error);
-       notifyListeners(sessionId, { error: body.error.message || 'An error occurred in the n8n workflow.' });
+       const errorMessage = body.error.message || 'An error occurred in the n8n workflow.';
+       resultCache.set(sessionId, { error: errorMessage });
        return NextResponse.json({ success: true, message: "Error notification received and processed." });
     }
 
-    // The n8n workflow might nest the final result. Adapt this as needed.
     const itineraryData = body.itinerary || body;
     const validatedItinerary = ItinerarySchema.parse(itineraryData);
 
-    console.log(`[Webhook] Successfully validated itinerary for sessionId: ${sessionId}`);
-    notifyListeners(sessionId, { itinerary: validatedItinerary });
+    console.log(`[Webhook] Successfully validated itinerary for sessionId: ${sessionId}, storing in cache.`);
+    resultCache.set(sessionId, { itinerary: validatedItinerary });
+
+    // Clean up cache entry after TTL
+    setTimeout(() => {
+        resultCache.delete(sessionId);
+        console.log(`[Webhook] Cleared cache for expired sessionId: ${sessionId}`);
+    }, CACHE_TTL);
 
     return NextResponse.json({ success: true, message: "Itinerary received and processed." });
   } catch (error) {
@@ -47,7 +58,7 @@ export async function POST(request: NextRequest) {
       errorMessage = error.message;
     }
 
-    notifyListeners(sessionId, { error: errorMessage });
+    resultCache.set(sessionId, { error: errorMessage });
 
     return NextResponse.json({ success: false, error: 'Failed to process webhook data' }, { status: 500 });
   }
@@ -57,9 +68,21 @@ export async function GET(request: NextRequest) {
   const { searchParams } = new URL(request.url);
   const sessionId = searchParams.get('sessionId');
   
-  return NextResponse.json({
-    message: 'Webhook endpoint is active. Use POST to send data.',
-    sessionIdProvided: sessionId || 'none',
-    timestamp: new Date().toISOString()
-  });
+  if (!sessionId) {
+    return NextResponse.json({ error: 'Session ID is required' }, { status: 400 });
+  }
+
+  console.log(`[Webhook] Received GET (poll) for sessionId: ${sessionId}`);
+
+  const result = resultCache.get(sessionId);
+
+  if (result) {
+    console.log(`[Webhook] Found result in cache for ${sessionId}, returning it.`);
+    // We can remove it from the cache after the first successful poll
+    // to prevent multiple reads, but let's keep it for now for robustness.
+    return NextResponse.json(result);
+  } else {
+    console.log(`[Webhook] No result in cache for ${sessionId} yet.`);
+    return NextResponse.json({ status: 'pending' });
+  }
 }
