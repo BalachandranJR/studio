@@ -8,15 +8,15 @@ import type { TravelPreference } from '@/lib/types';
 import { travelPreferenceSchema } from '@/lib/types';
 
 function getAppUrl() {
-  // Prefer the explicit public URL from Vercel environment variables.
+  // 1. Vercel specific environment variables for the deployed URL.
+  if (process.env.NEXT_PUBLIC_VERCEL_URL) {
+    return `https://${process.env.NEXT_PUBLIC_VERCEL_URL}`;
+  }
+  // 2. A fallback for other environments, expecting NEXT_PUBLIC_APP_URL to be set.
   if (process.env.NEXT_PUBLIC_APP_URL) {
     return process.env.NEXT_PUBLIC_APP_URL;
   }
-  // Vercel system variable for the deployment URL.
-  if (process.env.VERCEL_URL) {
-    return `https://${process.env.VERCEL_URL}`;
-  }
-  // Fallback for local development
+  // 3. Fallback for local development.
   return 'http://localhost:9002';
 }
 
