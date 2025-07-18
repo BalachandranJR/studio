@@ -12,10 +12,11 @@ function getAppUrl() {
   if (process.env.NEXT_PUBLIC_APP_URL) {
     return process.env.NEXT_PUBLIC_APP_URL;
   }
+  // 2. Vercel system variable.
   if (process.env.VERCEL_URL) {
     return `https://${process.env.VERCEL_URL}`;
   }
-  // 2. Fallback for local development.
+  // 3. Fallback for local development.
   return 'http://localhost:9002';
 }
 
@@ -54,7 +55,8 @@ export async function generateItinerary(
 
     const headers: HeadersInit = {
       'Content-Type': 'application/json',
-      'Authorization': `Bearer ${n8nApiKey}`,
+      // This is the standard header name n8n's "Header Auth" expects.
+      'X-N8N-API-KEY': n8nApiKey,
     };
 
     const response = await fetch(n8nWebhookUrl, {
@@ -72,7 +74,7 @@ export async function generateItinerary(
         console.error(errorMessage);
         // Provide a clearer message to the user
         if (response.status === 401) {
-             return { success: false, error: `Authentication with the itinerary service failed. Please check the API key.` };
+             return { success: false, error: `Authentication with the itinerary service failed. Please check the configured API key.` };
         }
         return { success: false, error: `There was a problem starting the itinerary generation (status: ${response.status}). The remote service might be unavailable.` };
     }
