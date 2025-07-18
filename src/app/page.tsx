@@ -1,7 +1,7 @@
 
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
 import { PlaneTakeoff, Loader2 } from "lucide-react";
 
 import { generateItinerary } from "@/app/actions";
@@ -24,17 +24,17 @@ export default function Home() {
     const eventSource = new EventSource(`/api/itinerary/stream?sessionId=${sessionId}`);
 
     eventSource.onmessage = (event) => {
-      // The event data is already a JSON string, so we parse it once.
-      const data = JSON.parse(event.data);
+      // The event data is a JSON string, so we parse it.
+      const eventData = JSON.parse(event.data);
 
-      if (data.error) {
-        console.error("Error received from server stream:", data.error);
-        setError(data.error);
+      if (eventData.error) {
+        console.error("Error received from server stream:", eventData.error);
+        setError(eventData.error);
         setIsLoading(false);
         eventSource.close();
-      } else if (data.itinerary) {
-        console.log("Itinerary received:", data.itinerary);
-        setItinerary(data.itinerary);
+      } else if (eventData.itinerary) {
+        console.log("Itinerary received, updating state:", eventData.itinerary);
+        setItinerary(eventData.itinerary);
         setIsLoading(false);
         eventSource.close();
       }
@@ -47,7 +47,7 @@ export default function Home() {
       eventSource.close();
     };
 
-
+    // Cleanup function to close the connection when the component unmounts or sessionId changes
     return () => {
       eventSource.close();
     };
