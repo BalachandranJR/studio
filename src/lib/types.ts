@@ -82,34 +82,54 @@ export const travelPreferenceSchema = z.object({
 
 export type TravelPreference = z.infer<typeof travelPreferenceSchema>;
 
-// This schema now matches the actual output from the n8n workflow.
 export const ActivitySchema = z.object({
   time: z.string().describe("The time of the activity, e.g., '9:00 AM' or 'Morning'."),
-  description: z.string().describe("A brief description of the activity."),
   name: z.string().optional().describe("The name of the activity."),
+  description: z.string().describe("A brief description of the activity."),
   type: z.string().describe("The category of the activity.").catch("activity"), 
   icon: z.string().describe("An icon name representing the activity type.").catch("default"),
   location: z.string().optional(),
   cost: z.string().optional(),
   transport: z.string().optional(),
+  category: z.string().optional(),
 });
 
 export const ItineraryDaySchema = z.object({
   day: z.number().describe("The day number of the itinerary, starting from 1."),
   date: z.string().describe("The date for this day's activities."),
   activities: z.array(ActivitySchema).describe("A list of activities for the day."),
+  breakdown: z.any().optional(), // Allow for the detailed breakdown from n8n
 });
 
-// This schema now matches the actual output from the n8n workflow.
+export const AccommodationSchema = z.object({
+    name: z.string(),
+    type: z.string(),
+    location: z.string(),
+    costPerNight: z.string(),
+    totalCost: z.string(),
+    amenities: z.array(z.string()).optional(),
+});
+
+export const CostBreakdownSchema = z.object({
+    accommodation: z.string().optional(),
+    transport: z.string().optional(),
+    meals: z.string().optional(),
+    activities: z.string().optional(),
+    nightlife: z.string().optional(),
+    total: z.string(),
+    notes: z.string().optional(),
+});
+
 export const ItinerarySchema = z.object({
+  id: z.string().optional(),
   destination: z.string().describe("The travel destination."),
   startDate: z.string().describe("The start date of the trip, can be a full ISO string."),
   endDate: z.string().describe("The end date of the trip, can be a full ISO string."),
   days: z.array(ItineraryDaySchema).describe("A list of days, each with their own schedule."),
+  accommodation: AccommodationSchema.optional(),
+  costBreakdown: CostBreakdownSchema.optional(),
 });
 
 export type Activity = z.infer<typeof ActivitySchema>;
 export type ItineraryDay = z.infer<typeof ItineraryDaySchema>;
 export type Itinerary = z.infer<typeof ItinerarySchema>;
-
-    

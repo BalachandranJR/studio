@@ -2,29 +2,12 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { ItinerarySchema, Itinerary } from '@/lib/types';
 import { z } from 'zod';
-import { unstable_noStore as noStore, unstable_cache as cache } from 'next/cache';
+import { unstable_noStore as noStore } from 'next/cache';
 
-// This is a simple in-memory cache that leverages Next.js's caching capabilities
-// to be more persistent across serverless function invocations than a simple Map.
-// We are essentially "tagging" each cache entry with the session ID.
-
-const getCachedResult = cache(
-    async (sessionId: string) => {
-        // This function body will only be executed if the result for this sessionId is not in the cache.
-        // Since we don't have a database to fetch from, we just return a "pending" status.
-        // The real value is set by the `revalidateTag` call in the POST handler.
-        return { status: 'pending' };
-    },
-    ['itinerary-results'], // Cache key prefix
-    {
-        tags: ['itinerary-tag'], // Use session-specific tags
-    }
-);
-
-// We need a way to store the actual data. A simple Map on the global scope
-// works better in Next.js than a request-scoped one.
-// While not guaranteed to persist across all serverless instances, it's more
-// reliable than a locally scoped variable.
+// A simple Map on the global scope works better in Next.js for serverless environments
+// than a request-scoped one. While not guaranteed to persist across all serverless instances
+// in a scaled environment, it's a common pattern for simple use cases on platforms like Vercel
+// that try to reuse warm instances.
 const resultStore: Map<string, { itinerary?: Itinerary; error?: string }> = new Map();
 const CACHE_TTL = 5 * 60 * 1000; // 5 minutes
 
@@ -55,15 +38,17 @@ export async function POST(request: NextRequest) {
        const errorMessage = typeof body.error === 'object' ? JSON.stringify(body.error) : body.error;
        dataToCache = { error: `An error occurred in the n8n workflow: ${errorMessage}` };
     } else {
+        // The itinerary is now nested inside an 'itinerary' object in the payload
         const itineraryData = body.itinerary;
         if (!itineraryData) {
             throw new Error("Payload from n8n is missing the 'itinerary' object.");
         }
+        
         const validatedItinerary = ItinerarySchema.parse(itineraryData);
         dataToCache = { itinerary: validatedItinerary };
+        console.log(`[Webhook] Successfully validated itinerary for sessionId: ${sessionId}, storing in cache.`);
     }
 
-    console.log(`[Webhook] Successfully processed data for sessionId: ${sessionId}, storing in cache.`);
     resultStore.set(sessionId, dataToCache);
     
     // Clean up cache entry after TTL
