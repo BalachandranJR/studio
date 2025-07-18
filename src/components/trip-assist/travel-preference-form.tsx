@@ -10,14 +10,7 @@ import { travelPreferenceSchema, type TravelPreference, ageGroups, areasOfIntere
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Calendar } from "@/components/ui/calendar";
-import {
-  Command,
-  CommandEmpty,
-  CommandGroup,
-  CommandInput,
-  CommandItem,
-  CommandList,
-} from "@/components/ui/command";
+import { Combobox } from "@/components/ui/combobox";
 import {
   Form,
   FormControl,
@@ -327,60 +320,16 @@ export function TravelPreferenceForm({ onSubmit, isPending }: TravelPreferenceFo
                     control={form.control}
                     name="budget.currency"
                     render={({ field }) => (
-                    <FormItem className="flex flex-col">
-                        <FormLabel>Currency</FormLabel>
-                        <Popover>
-                            <PopoverTrigger asChild>
-                                <FormControl>
-                                <Button
-                                    variant="outline"
-                                    role="combobox"
-                                    className={cn(
-                                    "w-full justify-between",
-                                    !field.value && "text-muted-foreground"
-                                    )}
-                                >
-                                    {field.value
-                                    ? currencies.find(
-                                        (currency) => currency.value === field.value
-                                    )?.label
-                                    : "Select currency"}
-                                    <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
-                                </Button>
-                                </FormControl>
-                            </PopoverTrigger>
-                            <PopoverContent className="w-[200px] p-0">
-                                <Command>
-                                <CommandInput placeholder="Search currency..." />
-                                <CommandList>
-                                <CommandEmpty>No currency found.</CommandEmpty>
-                                <CommandGroup>
-                                    {currencies.map((currency) => (
-                                    <CommandItem
-                                        value={currency.label}
-                                        key={currency.value}
-                                        onSelect={() => {
-                                        form.setValue("budget.currency", currency.value)
-                                        }}
-                                    >
-                                        <Check
-                                        className={cn(
-                                            "mr-2 h-4 w-4",
-                                            currency.value === field.value
-                                            ? "opacity-100"
-                                            : "opacity-0"
-                                        )}
-                                        />
-                                        {currency.label}
-                                    </CommandItem>
-                                    ))}
-                                </CommandGroup>
-                                </CommandList>
-                                </Command>
-                            </PopoverContent>
-                        </Popover>
-                        <FormMessage />
-                    </FormItem>
+                        <FormItem className="flex flex-col">
+                            <FormLabel>Currency</FormLabel>
+                            <Combobox
+                                options={currencies}
+                                value={field.value}
+                                onChange={field.onChange}
+                                placeholder="Select currency..."
+                            />
+                            <FormMessage />
+                        </FormItem>
                     )}
                 />
                 <FormField
@@ -573,5 +522,3 @@ export function TravelPreferenceForm({ onSubmit, isPending }: TravelPreferenceFo
     </Form>
   );
 }
-
-    
