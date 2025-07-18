@@ -84,14 +84,32 @@ export function TravelPreferenceForm({ onSubmit, isPending }: TravelPreferenceFo
   }
 
   function onFormError(errors: FieldErrors<TravelPreference>) {
-    const firstErrorField = Object.keys(errors)[0];
+    // Define the order of fields as they appear in the form
+    const fieldOrder: (keyof TravelPreference | `budget.${keyof TravelPreference['budget']}` | `dates.${keyof NonNullable<TravelPreference['dates']>}`)[] = [
+      'destination', 'dates.from', 'dates.to', 'numPeople', 'ageGroups', 
+      'interests', 'budget.currency', 'budget.amount', 'budget.otherCurrency',
+      'transport'
+    ];
+    
+    // Find the first field name that has an error
+    const firstErrorField = fieldOrder.find(fieldName => {
+        if (fieldName.includes('.')) {
+            const [parent, child] = fieldName.split('.');
+            return errors[parent as keyof TravelPreference]?.[child as keyof object];
+        }
+        return errors[fieldName as keyof TravelPreference];
+    });
+
     if (firstErrorField) {
-      const element = document.getElementsByName(firstErrorField)[0];
+      // Find the corresponding HTML element
+      const element = document.querySelector(`[name="${firstErrorField}"]`);
       if (element) {
+        // Scroll the element into view
         element.scrollIntoView({ behavior: 'smooth', block: 'center' });
       }
     }
   }
+
 
   return (
     <Form {...form}>
@@ -534,3 +552,5 @@ export function TravelPreferenceForm({ onSubmit, isPending }: TravelPreferenceFo
     </Form>
   );
 }
+
+    
