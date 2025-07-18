@@ -24,29 +24,29 @@ async function pollForResult(sessionId: string): Promise<{itinerary?: Itinerary,
 }
 
 const LoadingAnimation = () => {
-    const [emblaRef] = useEmblaCarousel({ loop: true }, []);
+    const [emblaRef] = useEmblaCarousel({ loop: true, autoplay: { delay: 4000 } });
 
     const slides = [
         {
-            image: "https://placehold.co/600x400.png",
+            image: "https://images.unsplash.com/photo-1520106212290-d5a2862e7453?q=80&w=1800",
             hint: "city skyline",
             title: "Finding the best spots...",
             description: "Our AI is analyzing thousands of locations to find the perfect match for your interests."
         },
         {
-            image: "https://placehold.co/600x400.png",
+            image: "https://images.unsplash.com/photo-1555939594-58d7cb561ad1?q=80&w=1800",
             hint: "restaurant food",
             title: "Crafting your culinary journey...",
             description: "We're picking out the best restaurants and local eateries based on your preferences."
         },
         {
-            image: "https://placehold.co/600x400.png",
+            image: "https://images.unsplash.com/photo-1542359649-31e03cdde4fe?q=80&w=1800",
             hint: "historic landmark",
             title: "Planning your daily activities...",
             description: "Each day is being filled with exciting activities, from famous landmarks to hidden gems."
         },
         {
-            image: "https://placehold.co/600x400.png",
+            image: "https://images.unsplash.com/photo-1528732263441-2b990b561e1b?q=80&w=1800",
             hint: "travel map",
             title: "Finalizing the details...",
             description: "Just a few more moments while we put the finishing touches on your personalized trip."
@@ -67,8 +67,9 @@ const LoadingAnimation = () => {
                                     height={400}
                                     className="w-full h-auto aspect-[3/2] object-cover"
                                     data-ai-hint={slide.hint}
+                                    priority={index === 0}
                                 />
-                                <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent" />
+                                <div className="absolute inset-0 bg-gradient-to-t from-black/80 to-transparent" />
                                 <div className="absolute bottom-0 left-0 p-6 text-white">
                                     <h3 className="text-xl font-bold">{slide.title}</h3>
                                     <p className="text-sm text-white/80">{slide.description}</p>
