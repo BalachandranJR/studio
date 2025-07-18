@@ -1,7 +1,7 @@
 
 "use client";
 
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useState, useCallback, useRef } from "react";
 import { PlaneTakeoff, Loader2 } from "lucide-react";
 
 import { generateItinerary } from "@/app/actions";
@@ -17,42 +17,88 @@ export default function Home() {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [sessionId, setSessionId] = useState<string | null>(null);
+  
+  const eventSourceRef = useRef<EventSource | null>(null);
+
+  const cleanup = useCallback(() => {
+    if (eventSourceRef.current) {
+      eventSourceRef.current.close();
+      eventSourceRef.current = null;
+    }
+  }, []);
 
   useEffect(() => {
-    if (!sessionId) return;
+    if (!sessionId) {
+      return;
+    }
 
-    const eventSource = new EventSource(`/api/itinerary/stream?sessionId=${sessionId}`);
+    // Ensure any previous connection is closed before starting a new one.
+    cleanup();
 
-    eventSource.onmessage = (event) => {
-      // The event data is a JSON string, so we parse it.
-      const eventData = JSON.parse(event.data);
+    const newEventSource = new EventSource(`/api/itinerary/stream?sessionId=${sessionId}`);
+    eventSourceRef.current = newEventSource;
+    console.log(`EventSource connected for session: ${sessionId}`);
 
-      if (eventData.error) {
-        console.error("Error received from server stream:", eventData.error);
-        setError(eventData.error);
+    const timeoutId = setTimeout(() => {
+        console.warn("EventSource timed out.");
+        setError("The request timed out while waiting for a response. Please try again.");
         setIsLoading(false);
-        eventSource.close();
-      } else if (eventData.itinerary) {
-        console.log("Itinerary received, updating state:", eventData.itinerary);
-        setItinerary(eventData.itinerary);
-        setIsLoading(false);
-        eventSource.close();
-      }
-    };
-    
-    eventSource.onerror = (err) => {
-      console.error("EventSource failed:", err);
-      setError("Connection to the server was lost while waiting for the itinerary. Please try again.");
-      setIsLoading(false);
-      eventSource.close();
+        cleanup();
+    }, 120000); // 2 minute timeout
+
+    newEventSource.onopen = () => {
+        console.log("EventSource connection established.");
     };
 
-    // Cleanup function to close the connection when the component unmounts or sessionId changes
+    newEventSource.onmessage = (event) => {
+        // Ignore keep-alive messages
+        if (event.data.startsWith(':')) {
+            console.log("Received keep-alive ping.");
+            return;
+        }
+        
+        console.log("EventSource data received:", event.data);
+        
+        try {
+            const data = JSON.parse(event.data);
+
+            if (data.error) {
+                console.error("Stream reported an error:", data.error);
+                setError(data.error);
+                setIsLoading(false);
+                clearTimeout(timeoutId);
+                cleanup();
+            } else if (data.itinerary) {
+                console.log("Itinerary received and setting state.");
+                setItinerary(data.itinerary);
+                setIsLoading(false);
+                clearTimeout(timeoutId);
+                cleanup();
+            }
+        } catch (e) {
+            console.error("Failed to parse message from EventSource:", e);
+            setError("Received invalid data from the server.");
+            setIsLoading(false);
+            clearTimeout(timeoutId);
+            cleanup();
+        }
+    };
+
+    newEventSource.onerror = (err) => {
+        console.error("EventSource encountered an error:", err);
+        setError("A connection error occurred. Please check your network and try again.");
+        setIsLoading(false);
+        clearTimeout(timeoutId);
+        cleanup();
+    };
+
+    // Main cleanup function when the component unmounts or sessionId changes
     return () => {
-      eventSource.close();
+        console.log("Cleaning up EventSource due to component unmount or dependency change.");
+        clearTimeout(timeoutId);
+        cleanup();
     };
-  }, [sessionId]);
-
+  }, [sessionId, cleanup]);
 
   const handleFormSubmit = async (data: TravelPreference) => {
     setIsLoading(true);
@@ -76,6 +122,7 @@ export default function Home() {
     setIsLoading(false);
     setError(null);
     setSessionId(null);
+    // The useEffect cleanup will handle the event source connection
   };
   
   return (
