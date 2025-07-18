@@ -320,14 +320,16 @@ export function TravelPreferenceForm({ onSubmit, isPending }: TravelPreferenceFo
                     control={form.control}
                     name="budget.currency"
                     render={({ field }) => (
-                        <FormItem className="flex flex-col">
+                        <FormItem>
                             <FormLabel>Currency</FormLabel>
-                            <Combobox
-                                options={currencies}
-                                value={field.value}
-                                onChange={field.onChange}
-                                placeholder="Select currency..."
-                            />
+                            <FormControl>
+                                <Combobox
+                                    options={currencies}
+                                    value={field.value}
+                                    onChange={field.onChange}
+                                    placeholder="Select currency..."
+                                />
+                            </FormControl>
                             <FormMessage />
                         </FormItem>
                     )}
@@ -522,3 +524,5 @@ export function TravelPreferenceForm({ onSubmit, isPending }: TravelPreferenceFo
     </Form>
   );
 }
+
+    
