@@ -4,26 +4,27 @@ import { ItinerarySchema } from '@/lib/types';
 import { notifyListeners } from '@/lib/itinerary-events';
 import { z } from 'zod';
 
-export const dynamic = 'force-dynamic'; // This is the important change
+// Ensure this endpoint is not cached and is treated as dynamic.
+export const dynamic = 'force-dynamic';
 
 export async function POST(request: NextRequest) {
   const searchParams = request.nextUrl.searchParams;
   const sessionId = searchParams.get('sessionId');
 
   if (!sessionId) {
-    console.error('Webhook Error: No sessionId provided in query parameters.');
+    console.error('[Webhook] Error: No sessionId provided in query parameters.');
     return NextResponse.json({ success: false, error: 'Session ID is required' }, { status: 400 });
   }
 
-  console.log(`Webhook received for sessionId: ${sessionId}`);
+  console.log(`[Webhook] Received POST for sessionId: ${sessionId}`);
 
   try {
     const body = await request.json();
-    console.log(`Webhook payload for ${sessionId}:`, JSON.stringify(body, null, 2));
-    
+    console.log(`[Webhook] Raw payload for ${sessionId}:`, JSON.stringify(body, null, 2));
+
     if (body.error) {
-       console.error(`n8n workflow error for session ${sessionId}:`, body.message);
-       notifyListeners(sessionId, { error: body.message || 'An error occurred in the n8n workflow.' });
+       console.error(`[Webhook] n8n workflow returned an error for session ${sessionId}:`, body.error);
+       notifyListeners(sessionId, { error: body.error.message || 'An error occurred in the n8n workflow.' });
        return NextResponse.json({ success: true, message: "Error notification received and processed." });
     }
 
@@ -31,17 +32,17 @@ export async function POST(request: NextRequest) {
     const itineraryData = body.itinerary || body;
     const validatedItinerary = ItinerarySchema.parse(itineraryData);
 
-    console.log(`Successfully validated itinerary for sessionId: ${sessionId}`);
+    console.log(`[Webhook] Successfully validated itinerary for sessionId: ${sessionId}`);
     notifyListeners(sessionId, { itinerary: validatedItinerary });
 
     return NextResponse.json({ success: true, message: "Itinerary received and processed." });
   } catch (error) {
-    console.error(`Webhook processing error for session ${sessionId}:`, error);
+    console.error(`[Webhook] Processing error for session ${sessionId}:`, error);
     
     let errorMessage = 'Invalid itinerary data received.';
     if (error instanceof z.ZodError) {
       errorMessage = "The itinerary data from the workflow has an invalid format.";
-      console.error("Zod validation details:", error.flatten());
+      console.error("[Webhook] Zod validation details:", error.flatten());
     } else if (error instanceof Error) {
       errorMessage = error.message;
     }
@@ -57,8 +58,7 @@ export async function GET(request: NextRequest) {
   const sessionId = searchParams.get('sessionId');
   
   return NextResponse.json({
-    message: 'Webhook endpoint is active and reachable.',
-    usage: 'This endpoint expects a POST request from the n8n workflow.',
+    message: 'Webhook endpoint is active. Use POST to send data.',
     sessionIdProvided: sessionId || 'none',
     timestamp: new Date().toISOString()
   });
