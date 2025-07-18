@@ -24,7 +24,7 @@ async function pollForResult(sessionId: string): Promise<{itinerary?: Itinerary,
 }
 
 const LoadingAnimation = () => {
-    const [emblaRef] = useEmblaCarousel({ loop: true, autoplay: { delay: 4000 } });
+    const [emblaRef] = useEmblaCarousel({ loop: true });
 
     const slides = [
         {
