@@ -14,12 +14,7 @@ function getAppUrl() {
     // Fallback for local development if the env var isn't set.
     return 'http://localhost:9002';
   }
-  
-  // Ensure the URL does not have a trailing slash to prevent double slashes.
-  const cleanedUrl = appUrl.endsWith('/') ? appUrl.slice(0, -1) : appUrl;
-  
-  console.log(`Using app URL: ${cleanedUrl}`);
-  return cleanedUrl.startsWith('http') ? cleanedUrl : `https://${cleanedUrl}`;
+  return appUrl.startsWith('http') ? appUrl : `https://${appUrl}`;
 }
 
 export async function generateItinerary(
@@ -41,7 +36,7 @@ export async function generateItinerary(
     }
 
     const appUrl = getAppUrl();
-    const callbackUrl = `${appUrl}/api/webhook?sessionId=${sessionId}`;
+    const callbackUrl = `${appUrl.replace(/\/$/, '')}/api/webhook?sessionId=${sessionId}`;
     
     console.log("Using n8n Webhook URL:", n8nWebhookUrl);
     console.log("Using Callback URL for n8n:", callbackUrl);

@@ -1,5 +1,4 @@
 
-// src/app/api/webhook/route.ts
 import { NextRequest, NextResponse } from 'next/server';
 import { ItinerarySchema, Itinerary } from '@/lib/types';
 import { z } from 'zod';

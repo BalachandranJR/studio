@@ -73,13 +73,13 @@ export const travelPreferenceSchema = z.object({
 
 export type TravelPreference = z.infer<typeof travelPreferenceSchema>;
 
-// Updated ActivitySchema to match n8n workflow output
+// This schema now matches the actual output from the n8n workflow.
 export const ActivitySchema = z.object({
   time: z.string().describe("The time of the activity, e.g., '9:00 AM' or 'Morning'."),
   description: z.string().describe("A brief description of the activity."),
-  name: z.string().optional().describe("The name of the activity."), // Keeping this as it might be what gets displayed
-  type: z.string().describe("The category of the activity.").catch("activity"), // Provide a default
-  icon: z.string().describe("An icon name representing the activity type.").catch("default"), // Provide a default
+  name: z.string().optional().describe("The name of the activity."),
+  type: z.string().describe("The category of the activity.").catch("activity"), 
+  icon: z.string().describe("An icon name representing the activity type.").catch("default"),
   location: z.string().optional(),
   cost: z.string().optional(),
   transport: z.string().optional(),
@@ -91,7 +91,7 @@ export const ItineraryDaySchema = z.object({
   activities: z.array(ActivitySchema).describe("A list of activities for the day."),
 });
 
-// Updated ItinerarySchema to match n8n workflow output
+// This schema now matches the actual output from the n8n workflow.
 export const ItinerarySchema = z.object({
   destination: z.string().describe("The travel destination."),
   startDate: z.string().describe("The start date of the trip, can be a full ISO string."),

@@ -12,7 +12,7 @@ import { TravelPreferenceForm } from "@/components/trip-assist/travel-preference
 import type { Itinerary, TravelPreference } from "@/lib/types";
 import { Button } from "@/components/ui/button";
 
-async function pollForResult(sessionId: string): Promise<{itinerary?: Itinerary, error?: string}> {
+async function pollForResult(sessionId: string): Promise<{itinerary?: Itinerary, error?: string, status?: string}> {
     const response = await fetch(`/api/webhook?sessionId=${sessionId}`);
     if (!response.ok) {
         throw new Error(`Polling failed with status ${response.status}`);
@@ -58,8 +58,10 @@ export default function Home() {
           setError(result.error);
           setIsLoading(false);
           cleanupPolling();
-        } else {
+        } else if (result.status === 'pending') {
             console.log("Still waiting for itinerary...");
+        } else {
+            console.warn("Unexpected polling response:", result);
         }
       } catch (err) {
         console.error("Polling failed:", err);

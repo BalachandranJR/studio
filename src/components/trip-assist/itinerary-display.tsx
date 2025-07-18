@@ -65,15 +65,15 @@ export function ItineraryDisplay({ itinerary, onRestart }: ItineraryDisplayProps
           </CardHeader>
           <CardContent>
             <Accordion type="single" collapsible defaultValue="day-1" className="w-full">
-              {itinerary.days.map((day) => (
-                <AccordionItem value={`day-${day.day}`} key={day.day}>
+              {itinerary.days.map((day, dayIndex) => (
+                <AccordionItem value={`day-${day.day}`} key={dayIndex}>
                   <AccordionTrigger className="font-headline text-lg">
                     Day {day.day}: {day.date}
                   </AccordionTrigger>
                   <AccordionContent>
                     <div className="space-y-4 pl-4 border-l-2 border-primary/50 ml-2">
-                      {day.activities.map((activity, index) => (
-                        <div key={index} className="relative flex items-start gap-4">
+                      {day.activities.map((activity, activityIndex) => (
+                        <div key={activityIndex} className="relative flex items-start gap-4">
                            <div className="absolute top-1 -left-[1.2rem] h-6 w-6 bg-background flex items-center justify-center rounded-full">
                               <span className="h-5 w-5 bg-primary/20 text-primary rounded-full flex items-center justify-center">
                                 <ItineraryIcon type={activity.type} icon={activity.icon} className="h-3 w-3" />
