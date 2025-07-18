@@ -47,24 +47,33 @@ const LoadingAnimation = () => {
 
     return (
         <Card className="overflow-hidden">
-            <CardContent className="p-0">
-                <div className="bg-muted/40 py-12">
+            <CardContent className="p-0 relative">
+                <Image
+                    src="https://images.unsplash.com/photo-1562740293-929699945956?q=80&w=2070&auto=format&fit=crop"
+                    alt="Cruise ship at sunset"
+                    layout="fill"
+                    objectFit="cover"
+                    className="z-0"
+                    data-ai-hint="cruise ship sunset"
+                />
+                <div className="absolute inset-0 bg-black/50 z-10" />
+                <div className="relative z-20 py-12">
                   <div className="overflow-hidden" ref={emblaRef}>
                       <div className="flex">
                           {quotes.map((item, index) => (
                               <div className="relative min-w-0 flex-[0_0_100%] px-8" key={index}>
                                   <div className="text-center h-40 flex flex-col justify-center">
-                                      <blockquote className="text-xl font-semibold italic text-foreground">
+                                      <blockquote className="text-xl font-semibold italic text-white">
                                           “{item.quote}”
                                       </blockquote>
-                                      <cite className="mt-4 text-sm text-muted-foreground not-italic">— {item.author}</cite>
+                                      <cite className="mt-4 text-sm text-neutral-300 not-italic">— {item.author}</cite>
                                   </div>
                               </div>
                           ))}
                       </div>
                   </div>
                 </div>
-                <div className="p-6 text-center space-y-2 border-t">
+                <div className="p-6 text-center space-y-2 border-t bg-background">
                     <h3 className="text-2xl font-semibold flex items-center justify-center gap-2">
                          <Loader2 className="w-6 h-6 animate-spin" />
                          Generating your custom itinerary...
