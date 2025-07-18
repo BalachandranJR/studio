@@ -36,7 +36,8 @@ export async function generateItinerary(
     }
 
     const appUrl = getAppUrl();
-    const callbackUrl = `${appUrl.replace(/\/$/, '')}/api/webhook?sessionId=${sessionId}`;
+    // Add a cache-busting parameter `v=2` to ensure n8n uses the fresh URL
+    const callbackUrl = `${appUrl.replace(/\/$/, '')}/api/webhook?sessionId=${sessionId}&v=2`;
     
     console.log("Using n8n Webhook URL:", n8nWebhookUrl);
     console.log(">>>> IMPORTANT: This is the callback URL being sent to n8n. Please verify it in your n8n workflow's final HTTP Request node:", callbackUrl);
