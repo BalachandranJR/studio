@@ -126,6 +126,7 @@ export default function Home() {
                 setError(result.error);
                 setAppState('error');
             } else {
+                // If there's no result yet, continue polling
                 pollingIntervalRef.current = setTimeout(poll, 3000);
             }
         } catch (err) {
@@ -136,6 +137,7 @@ export default function Home() {
         }
     };
     
+    // Start the first poll
     pollingIntervalRef.current = setTimeout(poll, 3000);
 
   }, [cleanupPolling]);
