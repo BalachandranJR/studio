@@ -24,18 +24,20 @@ export default function Home() {
     const eventSource = new EventSource(`/api/itinerary/stream?sessionId=${sessionId}`);
 
     eventSource.onmessage = (event) => {
-        const data = JSON.parse(event.data);
+      // The event data is already a JSON string, so we parse it once.
+      const data = JSON.parse(event.data);
 
-        if (data.error) {
-            console.error("Error received from server stream:", data.error);
-            setError(data.error);
-            setIsLoading(false);
-            eventSource.close();
-        } else if (data.itinerary) {
-            setItinerary(data.itinerary);
-            setIsLoading(false);
-            eventSource.close();
-        }
+      if (data.error) {
+        console.error("Error received from server stream:", data.error);
+        setError(data.error);
+        setIsLoading(false);
+        eventSource.close();
+      } else if (data.itinerary) {
+        console.log("Itinerary received:", data.itinerary);
+        setItinerary(data.itinerary);
+        setIsLoading(false);
+        eventSource.close();
+      }
     };
     
     eventSource.onerror = (err) => {
