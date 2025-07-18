@@ -80,34 +80,30 @@ const TripSummary = ({ preferences }: { preferences: TravelPreference }) => {
     );
 };
 
-function parseTimeToMinutes(timeStr: string): number {
+function parseTimeToMinutes(timeStr: string | undefined): number {
+    if (!timeStr) return 9999;
+    
     const lowerTime = timeStr.toLowerCase();
 
-    // Handle generic time periods
-    if (lowerTime.includes('morning')) return 8 * 60; // 8:00 AM
-    if (lowerTime.includes('afternoon')) return 13 * 60; // 1:00 PM
-    if (lowerTime.includes('evening') || lowerTime.includes('night')) return 19 * 60; // 7:00 PM
-    if (lowerTime.includes('lunch')) return 12 * 60; // 12:00 PM
-    if (lowerTime.includes('dinner')) return 19 * 60; // 7:00 PM
+    if (lowerTime.includes('morning')) return 8 * 60;
+    if (lowerTime.includes('afternoon')) return 13 * 60;
+    if (lowerTime.includes('evening') || lowerTime.includes('night')) return 19 * 60;
+    if (lowerTime.includes('lunch')) return 12 * 60;
+    if (lowerTime.includes('dinner')) return 19 * 60;
 
     const match = lowerTime.match(/(\d{1,2}):?(\d{2})?\s*(am|pm)?/);
-    if (!match) return 9999; // Should sort to the end if unparseable
+    if (!match) return 9999;
 
     let [_, hoursStr, minutesStr, period] = match;
     let hours = parseInt(hoursStr, 10);
     const minutes = minutesStr ? parseInt(minutesStr, 10) : 0;
 
+    if (isNaN(hours) || isNaN(minutes)) return 9999;
+
     if (period === 'pm' && hours !== 12) {
         hours += 12;
     } else if (period === 'am' && hours === 12) {
-        hours = 0; // Midnight case
-    }
-    
-    // If no period is specified, guess based on hour
-    if (!period) {
-        if (hours >= 1 && hours <= 6) { // e.g. "1:00" is likely afternoon
-            hours += 12;
-        }
+        hours = 0;
     }
 
     return hours * 60 + minutes;
