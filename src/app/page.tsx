@@ -42,10 +42,14 @@ export default function Home() {
     }
 
     console.log(`Starting polling for sessionId: ${sessionId}`);
+    let attempts = 0;
+    const maxAttempts = 60; // Poll for 3 minutes (60 attempts * 3 seconds)
+
 
     pollingIntervalRef.current = setInterval(async () => {
+      attempts++;
       try {
-        console.log(`Polling for sessionId: ${sessionId}`);
+        console.log(`Polling attempt ${attempts} for sessionId: ${sessionId}`);
         const result = await pollForResult(sessionId);
 
         if (result.itinerary) {
@@ -60,6 +64,12 @@ export default function Home() {
           cleanupPolling();
         } else if (result.status === 'pending') {
             console.log("Still waiting for itinerary...");
+            if (attempts >= maxAttempts) {
+                 console.warn(`Polling timed out after ${maxAttempts} attempts for sessionId: ${sessionId}`);
+                 setError("The request timed out. The generation service might be busy or failed to respond. Please try again later.");
+                 setIsLoading(false);
+                 cleanupPolling();
+            }
         } else {
             console.warn("Unexpected polling response:", result);
         }
@@ -72,19 +82,9 @@ export default function Home() {
       }
     }, 3000); // Poll every 3 seconds
 
-    const timeout = setTimeout(() => {
-        if (isLoading) {
-             console.warn(`Polling timed out for sessionId: ${sessionId}`);
-             setError("The request timed out while waiting for a response. The generation service might be busy. Please try again later.");
-             setIsLoading(false);
-             cleanupPolling();
-        }
-    }, 180000); // 3-minute timeout
-
     return () => {
       console.log(`Cleaning up polling for sessionId: ${sessionId}`);
       cleanupPolling();
-      clearTimeout(timeout);
     };
   }, [sessionId, isLoading, cleanupPolling]);
 
