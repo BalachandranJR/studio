@@ -42,7 +42,7 @@ export default function Home() {
     }
 
     let attempts = 0;
-    const maxAttempts = 60; // Poll for 3 minutes (60 attempts * 3 seconds)
+    const maxAttempts = 100; // Poll for 5 minutes (100 attempts * 3 seconds)
     let timedOut = false;
 
 
