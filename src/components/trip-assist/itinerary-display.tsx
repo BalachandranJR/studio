@@ -23,7 +23,7 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
-import type { Itinerary, Activity, TravelPreference, ItineraryDay } from "@/lib/types";
+import type { Itinerary, Activity, TravelPreference } from "@/lib/types";
 import { ageGroups, areasOfInterest, transportOptions, foodPreferences } from "@/lib/types";
 
 interface ItineraryDisplayProps {
@@ -76,7 +76,7 @@ const TimeOfDayBlock = ({
 }: {
   icon: React.ElementType,
   title: string,
-  activities: Activity[] | undefined
+  activities: Activity[]
 }) => {
   if (!activities || activities.length === 0) {
     return null;
@@ -89,7 +89,7 @@ const TimeOfDayBlock = ({
       </h4>
       <div className="space-y-4 pl-4 border-l-2 border-primary/50 ml-2">
         {activities.map((activity, index) => (
-            <ActivityCard key={index} activity={activity} />
+            activity && <ActivityCard key={index} activity={activity} />
         ))}
       </div>
     </div>
@@ -213,41 +213,6 @@ const CostBreakdown = ({ costBreakdown }: { costBreakdown?: Itinerary['costBreak
   );
 };
 
-
-function sortActivities(activities: Activity[] = []): Activity[] {
-  const parseTimeToMinutes = (timeStr: string | undefined): number => {
-      if (!timeStr) return 9999;
-      const lowerTime = timeStr.toLowerCase().trim();
-
-      const timeMap: { [key: string]: number } = {
-          'early morning': 360, 'morning': 540, 'breakfast': 540,
-          'late morning': 660, 'brunch': 660, 
-          'lunch': 720, 'afternoon': 840, 'midday': 840,
-          'late afternoon': 960, 
-          'evening': 1080, 'dinner': 1140, 
-          'night': 1260, 'late night': 1380,
-      };
-
-      for (const key in timeMap) {
-          if (lowerTime.includes(key)) return timeMap[key];
-      }
-
-      const match = lowerTime.match(/(\d{1,2})[:.]?(\d{2})?\s*(am|pm)?/);
-      if (!match) return 9998; // Fallback for non-standard string times
-
-      let [_, hoursStr, minutesStr, period] = match;
-      let hours = parseInt(hoursStr, 10);
-      const minutes = minutesStr ? parseInt(minutesStr, 10) : 0;
-      if (isNaN(hours)) return 9997; // Invalid number
-
-      if (period === 'pm' && hours < 12) hours += 12;
-      else if (period === 'am' && hours === 12) hours = 0; // Midnight case
-      
-      return hours * 60 + minutes;
-  };
-  return [...activities].sort((a, b) => parseTimeToMinutes(a.time) - parseTimeToMinutes(b.time));
-}
-
 // This function robustly parses a date string, trying multiple formats.
 function parseDate(dateStr: string): Date | null {
   if (!dateStr) return null;
@@ -288,6 +253,7 @@ export function ItineraryDisplay({ itinerary, preferences, onRestart }: Itinerar
       
       const itineraryDay = itinerary.days.find(d => {
           if (!d.date) return false;
+          // Normalize the date from the itinerary before comparing
           const dayDate = parseDate(d.date);
           return dayDate ? format(dayDate, 'yyyy-MM-dd') === currentDateStr : false;
       });
@@ -335,39 +301,45 @@ export function ItineraryDisplay({ itinerary, preferences, onRestart }: Itinerar
                     <CardContent>
                     <Accordion type="multiple" value={openDays} onValueChange={setOpenDays} className="w-full">
                     {allDays.map(({ dayNumber, date, data: day }) => {
-                       const dayTemplate = day?.template ?? day?.breakdown;
+                       const dayTemplate = day?.template;
                        
+                       // This function now correctly gathers all activities from the template
                        const getActivitiesForPeriod = (period: 'morning' | 'afternoon' | 'night'): Activity[] => {
-                            if (period === 'morning') {
-                                return [
-                                    ...(dayTemplate?.breakfast ? [dayTemplate.breakfast] : []),
-                                    ...(dayTemplate?.morningActivities || [])
-                                ];
-                            }
-                            if (period === 'afternoon') {
-                                return [
-                                    ...(dayTemplate?.lunch ? [dayTemplate.lunch] : []),
-                                    ...(dayTemplate?.afternoonActivities || []),
-                                    ...(dayTemplate?.middayActivities || [])
-                                ];
-                            }
-                            if (period === 'night') {
-                                const nightlife = dayTemplate?.nightlife;
-                                const nightlifeArray = Array.isArray(nightlife) ? nightlife : (nightlife ? [nightlife] : []);
-                                return [
-                                    ...(dayTemplate?.dinner ? [dayTemplate.dinner] : []),
-                                    ...nightlifeArray,
-                                    ...(dayTemplate?.nightlifeActivities || [])
-                                ];
-                            }
-                            return [];
+                           if (!dayTemplate) return [];
+                           
+                           let activities: (Activity | null | undefined)[] = [];
+                           
+                           if (period === 'morning') {
+                               activities = [
+                                   dayTemplate.startOfDay,
+                                   dayTemplate.breakfast,
+                                   ...(dayTemplate.morningActivities || [])
+                               ];
+                           } else if (period === 'afternoon') {
+                               activities = [
+                                   dayTemplate.lunch,
+                                   ...(dayTemplate.middayActivities || []),
+                                   ...(dayTemplate.eveningActivities || [])
+                               ];
+                           } else if (period === 'night') {
+                               activities = [
+                                   dayTemplate.dinner,
+                                   ...(dayTemplate.nightlifeActivities || []),
+                                   dayTemplate.endOfDay
+                               ];
+                           }
+                           
+                           // Filter out any null/undefined entries and sort by time
+                           return activities
+                               .filter((a): a is Activity => !!a)
+                               .sort((a, b) => (a.time || "99:99").localeCompare(b.time || "99:99"));
                        };
 
                        const morningActivities = getActivitiesForPeriod('morning');
                        const afternoonActivities = getActivitiesForPeriod('afternoon');
                        const nightActivities = getActivitiesForPeriod('night');
 
-                       const hasContent = morningActivities.length > 0 || afternoonActivities.length > 0 || nightActivities.length > 0 || (day?.activities && day.activities.length > 0);
+                       const hasContent = morningActivities.length > 0 || afternoonActivities.length > 0 || nightActivities.length > 0;
 
                        return (
                         <AccordionItem value={`day-${dayNumber}`} key={dayNumber}>
@@ -376,32 +348,23 @@ export function ItineraryDisplay({ itinerary, preferences, onRestart }: Itinerar
                         </AccordionTrigger>
                         <AccordionContent>
                            {hasContent ? (
-                                // Use the structured template if it exists and has content
-                                (morningActivities.length > 0 || afternoonActivities.length > 0 || nightActivities.length > 0) ? (
                                   <div className="divide-y">
                                     <TimeOfDayBlock 
                                       icon={Sun}
                                       title="Morning"
-                                      activities={sortActivities(morningActivities)}
+                                      activities={morningActivities}
                                     />
                                     <TimeOfDayBlock 
                                       icon={Sunset}
                                       title="Afternoon"
-                                      activities={sortActivities(afternoonActivities)}
+                                      activities={afternoonActivities}
                                     />
                                     <TimeOfDayBlock 
                                       icon={Moon}
                                       title="Night"
-                                      activities={sortActivities(nightActivities)}
+                                      activities={nightActivities}
                                     />
                                   </div>
-                                ) : ( // Fallback to flat activities list if breakdown is missing
-                                   <div className="space-y-4 pl-4 border-l-2 border-primary/50 ml-2 py-4">
-                                    {sortActivities(day?.activities).map((activity, activityIndex) => (
-                                        <ActivityCard key={activityIndex} activity={activity} />
-                                    ))}
-                                   </div>
-                                )
                             ) : (
                               <div className="pl-4 text-muted-foreground italic py-4">No activities planned for this day.</div>
                             )}

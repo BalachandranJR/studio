@@ -91,19 +91,18 @@ export const ActivitySchema = z.object({
   location: z.string().optional(),
   cost: z.union([z.string(), z.number()]).optional(),
   transport: z.string().optional(),
-  category: z.string().optional(),
   notes: z.string().optional(),
 });
 
-const DayBreakdownSchema = z.object({
+// This now matches the `template` object from your n8n workflow
+const DayTemplateSchema = z.object({
     startOfDay: ActivitySchema.nullable().optional(),
     breakfast: ActivitySchema.nullable().optional(),
     morningActivities: z.array(ActivitySchema).optional(),
-    lunch: ActivitySchema.nullable().optional(),
-    afternoonActivities: z.array(ActivitySchema).optional(),
     middayActivities: z.array(ActivitySchema).optional(),
+    lunch: ActivitySchema.nullable().optional(),
+    eveningActivities: z.array(ActivitySchema).optional(),
     dinner: ActivitySchema.nullable().optional(),
-    nightlife: z.union([ActivitySchema, z.array(ActivitySchema)]).nullable().optional(), // Can be single or array
     nightlifeActivities: z.array(ActivitySchema).optional(),
     endOfDay: ActivitySchema.nullable().optional(),
 });
@@ -111,10 +110,8 @@ const DayBreakdownSchema = z.object({
 export const ItineraryDaySchema = z.object({
   day: z.number().describe("The day number of the itinerary, starting from 1."),
   date: z.string().describe("The date for this day's activities."),
-  activities: z.array(ActivitySchema).optional().describe("A flat list of activities for the day, for backward compatibility."),
-  meals: z.array(ActivitySchema).optional(),
-  breakdown: DayBreakdownSchema.optional(),
-  template: DayBreakdownSchema.optional(),
+  activities: z.array(ActivitySchema).optional().describe("A flat list of all activities for the day."),
+  template: DayTemplateSchema.optional().describe("The structured breakdown of activities for the day."),
 });
 
 export const AccommodationSchema = z.object({
@@ -136,6 +133,7 @@ export const CostBreakdownSchema = z.object({
     notes: z.string().optional(),
 });
 
+// Main Itinerary Schema now uses the corrected Day schema
 export const ItinerarySchema = z.object({
   id: z.string().optional(),
   destination: z.string({ required_error: "Destination is required." }),
