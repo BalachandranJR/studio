@@ -1,4 +1,3 @@
-
 'use server';
 
 import { z } from 'zod';
@@ -14,22 +13,32 @@ const actionSchema = travelPreferenceSchema.extend({
   })
 });
 
-// This now represents the top-level structure of a successful response from the n8n workflow.
-// The itinerary is expected to be directly inside the 'data' property.
+// Enhanced schema to include the new displayText field
 const N8NSuccessResponseSchema = z.object({
     success: z.literal(true),
-    data: ItinerarySchema // The itinerary is now directly here
+    message: z.string().optional(),
+    data: ItinerarySchema.extend({
+        formattedDisplay: z.string().optional(), // The formatted text from the workflow
+    }),
+    displayText: z.string().optional(), // Alternative location for formatted text
 });
 
 // This type represents a potential error response from the n8n workflow
 const N8NErrorResponseSchema = z.object({
   success: z.literal(false),
   message: z.string(),
+  error: z.string().optional(),
+  details: z.string().optional(),
 });
+
+// Extended return type to include formatted display text
+export type ItineraryResult = 
+  | { success: true; itinerary: Itinerary & { formattedDisplay?: string }; displayText?: string }
+  | { success: false; error: string };
 
 export async function generateItinerary(
   data: z.infer<typeof actionSchema>
-): Promise<{ success: true; itinerary: Itinerary } | { success: false; error: string }> {
+): Promise<ItineraryResult> {
 
   try {
     const validatedData = actionSchema.parse(data);
@@ -68,8 +77,11 @@ export async function generateItinerary(
 
     // Check if the workflow returned a structured error first
     if (responseData.success === false) {
-        console.error('n8n workflow returned a business logic error:', responseData.message);
-        return { success: false, error: responseData.message || "The itinerary service reported an unspecified error." };
+        console.error('n8n workflow returned a business logic error:', responseData.message || responseData.error);
+        return { 
+            success: false, 
+            error: responseData.message || responseData.error || "The itinerary service reported an unspecified error." 
+        };
     }
     
     // Validate the successful response structure
@@ -77,15 +89,25 @@ export async function generateItinerary(
 
     if (!result.success) {
       console.error("Invalid itinerary structure received from n8n:", result.error.flatten());
+      console.error("Raw response data:", JSON.stringify(responseData, null, 2));
       return { success: false, error: "The itinerary service returned an unexpected data format." };
     }
 
-    // The itinerary is now located at result.data
-    return { success: true, itinerary: result.data };
+    // Extract both the itinerary data and the formatted display text
+    const itineraryData = result.data.data;
+    const displayText = result.data.displayText || itineraryData.formattedDisplay;
+
+    // Return the itinerary with optional formatted display text
+    return { 
+        success: true, 
+        itinerary: itineraryData,
+        displayText: displayText
+    };
 
   } catch (error) {
     console.error('Error in generateItinerary action:', error);
     if (error instanceof z.ZodError) {
+        console.error('Zod validation errors:', error.flatten());
         return { success: false, error: 'There was a validation error with the form data.' };
     }
     const errorMessage = error instanceof Error ? error.message : 'An unexpected error occurred while generating the itinerary.';
