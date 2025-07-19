@@ -3,7 +3,7 @@
 
 import { useState } from "react";
 import { format, parse, addDays, differenceInDays, isValid } from "date-fns";
-import { Download, RotateCcw, Calendar as CalendarIcon, Clock, MapPin, DollarSign, Bus, Users, Utensils, Sparkles, Wallet, Plane, Home, CreditCard, Sun, Sunset, Moon, Info, Star, Coffee, Bed } from "lucide-react";
+import { Download, RotateCcw, Calendar as CalendarIcon, Clock, MapPin, DollarSign, Bus, Users, Utensils, Sparkles, Wallet, Plane, Home, CreditCard, Info } from "lucide-react";
 
 import { ItineraryIcon } from "@/components/icons";
 import {
@@ -33,7 +33,7 @@ interface ItineraryDisplayProps {
 }
 
 const ActivityDetail = ({ icon: Icon, label, value, note }: { icon: React.ElementType, label: string, value?: string | number, note?: string }) => {
-  if (!value && !note) return null;
+  if (!value && value !== 0) return null;
   const displayValue = typeof value === 'number' && label.toLowerCase() === 'cost' ? `$${value}` : value;
   return (
     <div className="flex items-start text-xs text-muted-foreground mt-1">
@@ -204,18 +204,27 @@ const CostBreakdown = ({ costBreakdown }: { costBreakdown?: Itinerary['costBreak
 
 function parseDate(dateStr: string): Date | null {
   if (!dateStr) return null;
-  let date = parse(dateStr, 'yyyy-MM-dd', new Date());
+  // First, try to parse formats like "Jul 19, 2025" or "July 19, 2025"
+  let date = new Date(dateStr);
   if (isValid(date)) return date;
-  date = new Date(dateStr);
+
+  // Then try "YYYY-MM-DD"
+  date = parse(dateStr, 'yyyy-MM-dd', new Date());
   if (isValid(date)) return date;
+  
   return null;
 }
 
 export function ItineraryDisplay({ itinerary, preferences, onRestart }: ItineraryDisplayProps) {
   const [openDays, setOpenDays] = useState<string[]>(['day-1']);
   
+  const startDate = parseDate(itinerary.startDate);
+  const endDate = parseDate(itinerary.endDate);
+  
   const handleDownload = () => {
-    const allDayKeys = allDays.map((_, index) => `day-${index + 1}`);
+    if (!startDate || !endDate) return;
+    const totalDays = differenceInDays(endDate, startDate) + 1;
+    const allDayKeys = Array.from({ length: totalDays }, (_, index) => `day-${index + 1}`);
     setOpenDays(allDayKeys);
 
     setTimeout(() => {
@@ -223,11 +232,9 @@ export function ItineraryDisplay({ itinerary, preferences, onRestart }: Itinerar
     }, 100);
   };
 
-  const startDate = preferences.dates.from;
-  const endDate = preferences.dates.to;
 
   if (!startDate || !endDate) {
-    return <Card><CardHeader><CardTitle>Error</CardTitle><CardDescription>Invalid date format in travel preferences.</CardDescription></CardHeader></Card>
+    return <Card><CardHeader><CardTitle>Error</CardTitle><CardDescription>Invalid date format in itinerary data.</CardDescription></CardHeader></Card>
   }
   
   const totalDays = differenceInDays(endDate, startDate) + 1;
@@ -310,17 +317,11 @@ export function ItineraryDisplay({ itinerary, preferences, onRestart }: Itinerar
                         <AccordionContent>
                            {hasContent ? (
                                   <div className="divide-y">
-                                    <DaySection title="Start of the Day" activities={[dayTemplate.startOfDay]} />
-                                    <DaySection title="Breakfast" activities={[dayTemplate.breakfast]} />
-                                    <DaySection title="Morning Activities" activities={dayTemplate.morningActivities || []} />
-                                    
-                                    <DaySection title="Midday / Lunch" activities={[dayTemplate.lunch]} />
-                                    <DaySection title="Afternoon Activities" activities={dayTemplate.middayActivities || []} />
-
-                                    <DaySection title="Evening / Dinner" activities={[dayTemplate.dinner]} />
-                                    <DaySection title="Nightlife" activities={eveningActivities} />
-                                    
-                                    <DaySection title="End of the Day" activities={[dayTemplate.endOfDay]} />
+                                    <DaySection title="Start of Day" activities={[dayTemplate.startOfDay]} />
+                                    <DaySection title="Morning" activities={[dayTemplate.breakfast, ...(dayTemplate.morningActivities || [])]} />
+                                    <DaySection title="Midday" activities={[dayTemplate.lunch, ...(dayTemplate.middayActivities || [])]} />
+                                    <DaySection title="Evening" activities={[dayTemplate.dinner, ...eveningActivities]} />
+                                    <DaySection title="End of Day" activities={[dayTemplate.endOfDay]} />
                                   </div>
                             ) : (
                               <div className="pl-4 text-muted-foreground italic py-4">No activities planned for this day.</div>
