@@ -2,7 +2,7 @@
 "use client";
 
 import { useState } from "react";
-import { format, parseISO } from "date-fns";
+import { format, parseISO, addDays, differenceInDays } from "date-fns";
 import { Download, RotateCcw, Calendar as CalendarIcon, Clock, MapPin, DollarSign, Bus, Users, Utensils, Sparkles, Wallet, Plane, Home, CreditCard, Sun, Sunset, Moon, Info } from "lucide-react";
 
 import { ItineraryIcon } from "@/components/icons";
@@ -251,13 +251,35 @@ export function ItineraryDisplay({ itinerary, preferences, onRestart }: Itinerar
   const [openDays, setOpenDays] = useState<string[]>(['day-1']);
   
   const handleDownload = () => {
-    const allDayKeys = itinerary.days.map(day => `day-${day.day}`);
+    const allDayKeys = allDays.map((_, index) => `day-${index + 1}`);
     setOpenDays(allDayKeys);
 
     setTimeout(() => {
         window.print();
     }, 100);
   };
+
+  const startDate = parseISO(itinerary.startDate);
+  const endDate = parseISO(itinerary.endDate);
+  const totalDays = differenceInDays(endDate, startDate) + 1;
+  const allDays = Array.from({ length: totalDays }, (_, i) => {
+      const currentDate = addDays(startDate, i);
+      // Find the corresponding day from the itinerary data
+      const itineraryDay = itinerary.days.find(d => {
+          if (!d.date) return false;
+          try {
+              const itineraryDate = parseISO(d.date);
+              return format(currentDate, 'yyyy-MM-dd') === format(itineraryDate, 'yyyy-MM-dd');
+          } catch (e) {
+              return false;
+          }
+      });
+      return {
+          dayNumber: i + 1,
+          date: format(currentDate, "MMM d, yyyy"),
+          data: itineraryDay,
+      };
+  });
   
   return (
     <>
@@ -294,13 +316,13 @@ export function ItineraryDisplay({ itinerary, preferences, onRestart }: Itinerar
                     </CardHeader>
                     <CardContent>
                     <Accordion type="multiple" value={openDays} onValueChange={setOpenDays} className="w-full">
-                    {itinerary.days.map((day: ItineraryDay, dayIndex: number) => (
-                        <AccordionItem value={`day-${day.day}`} key={dayIndex}>
+                    {allDays.map(({ dayNumber, date, data: day }) => (
+                        <AccordionItem value={`day-${dayNumber}`} key={dayNumber}>
                         <AccordionTrigger className="font-headline text-lg">
-                            Day {day.day}: {day.date}
+                            Day {dayNumber}: {date}
                         </AccordionTrigger>
                         <AccordionContent>
-                            {day.breakdown ? (
+                            {day?.breakdown ? (
                               <div className="divide-y">
                                 <TimeOfDayBlock 
                                   icon={Sun}
@@ -321,12 +343,14 @@ export function ItineraryDisplay({ itinerary, preferences, onRestart }: Itinerar
                                   activities={day.breakdown.night.activities}
                                 />
                               </div>
-                            ) : (
+                            ) : day?.activities ? (
                                <div className="space-y-4 pl-4 border-l-2 border-primary/50 ml-2">
                                 {sortActivities(day.activities).map((activity, activityIndex) => (
                                     <ActivityCard key={activityIndex} activity={activity} />
                                 ))}
                                </div>
+                            ) : (
+                              <div className="pl-4 text-muted-foreground italic">No activities planned for this day.</div>
                             )}
                         </AccordionContent>
                         </AccordionItem>
@@ -374,3 +398,5 @@ export function ItinerarySkeleton() {
     </Card>
   );
 }
+
+    
