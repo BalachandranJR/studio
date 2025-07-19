@@ -3,7 +3,7 @@
 
 import { useState } from "react";
 import { format, parseISO } from "date-fns";
-import { Download, RotateCcw, Calendar as CalendarIcon, Clock, MapPin, DollarSign, Bus, Users, Utensils, Sparkles, Wallet, Plane, Home, CreditCard } from "lucide-react";
+import { Download, RotateCcw, Calendar as CalendarIcon, Clock, MapPin, DollarSign, Bus, Users, Utensils, Sparkles, Wallet, Plane, Home, CreditCard, Sun, Sunset, Moon, Info } from "lucide-react";
 
 import { ItineraryIcon } from "@/components/icons";
 import {
@@ -23,7 +23,7 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
-import type { Itinerary, Activity, TravelPreference } from "@/lib/types";
+import type { Itinerary, Activity, TravelPreference, ItineraryDay } from "@/lib/types";
 import { ageGroups, areasOfInterest, transportOptions, foodPreferences } from "@/lib/types";
 
 interface ItineraryDisplayProps {
@@ -32,15 +32,70 @@ interface ItineraryDisplayProps {
   onRestart: () => void;
 }
 
-const ActivityDetail = ({ icon: Icon, label, value }: { icon: React.ElementType, label: string, value?: string }) => {
-  if (!value) return null;
+const ActivityDetail = ({ icon: Icon, label, value, note }: { icon: React.ElementType, label: string, value?: string, note?: string }) => {
+  if (!value && !note) return null;
   return (
     <div className="flex items-start text-xs text-muted-foreground mt-1">
       <Icon className="h-3 w-3 mr-2 mt-0.5 shrink-0" />
-      <span className="font-semibold mr-1">{label}:</span>
-      <span>{value}</span>
+      {value && <span className="font-semibold mr-1">{label}:</span>}
+      <span>{value} {note && <span className="italic">({note})</span>}</span>
     </div>
   );
+};
+
+const ActivityCard = ({ activity }: { activity: Activity }) => {
+    return (
+        <div className="relative flex items-start gap-4">
+            <div className="absolute top-1 -left-[1.2rem] h-6 w-6 bg-background flex items-center justify-center rounded-full">
+                <span className="h-5 w-5 bg-primary/20 text-primary rounded-full flex items-center justify-center">
+                    <ItineraryIcon type={activity.type} icon={activity.icon} className="h-3 w-3" />
+                </span>
+            </div>
+            <div className="flex-1">
+                <p className="font-semibold flex items-center gap-2">
+                <Clock className="h-4 w-4 text-muted-foreground" />
+                {activity.time} - {activity.name || "Activity"}
+                </p>
+                <p className="text-muted-foreground pl-6">{activity.description}</p>
+                <div className="pl-6 mt-2 space-y-1">
+                    <ActivityDetail icon={MapPin} label="Location" value={activity.location} />
+                    <ActivityDetail icon={DollarSign} label="Cost" value={typeof activity.cost === 'number' ? `$${activity.cost}` : activity.cost} />
+                    <ActivityDetail icon={Bus} label="Transport" value={activity.transport} />
+                    <ActivityDetail icon={Info} label="Notes" value={activity.notes} />
+                </div>
+            </div>
+        </div>
+    );
+};
+
+const TimeOfDayBlock = ({
+  icon: Icon,
+  title,
+  meal,
+  activities
+}: {
+  icon: React.ElementType,
+  title: string,
+  meal: Activity | null,
+  activities: Activity[]
+}) => {
+  if (!meal && activities.length === 0) {
+    return null;
+  }
+  return (
+    <div className="space-y-4 py-4">
+      <h4 className="flex items-center gap-2 font-semibold text-md text-primary">
+        <Icon className="h-5 w-5" />
+        {title}
+      </h4>
+      <div className="space-y-4 pl-4 border-l-2 border-primary/50 ml-2">
+        {meal && <ActivityCard activity={meal} />}
+        {activities.map((activity, index) => (
+            <ActivityCard key={index} activity={activity} />
+        ))}
+      </div>
+    </div>
+  )
 };
 
 const SummaryDetail = ({ icon: Icon, label, value }: { icon: React.ElementType, label: string, value: string | React.ReactNode }) => {
@@ -128,7 +183,7 @@ const CostBreakdown = ({ costBreakdown }: { costBreakdown?: Itinerary['costBreak
     { label: "Meals", value: costBreakdown.meals },
     { label: "Activities", value: costBreakdown.activities },
     { label: "Nightlife", value: costBreakdown.nightlife },
-  ].filter(item => item.value);
+  ].filter(item => typeof item.value !== 'undefined');
 
   return (
     <Card>
@@ -141,14 +196,14 @@ const CostBreakdown = ({ costBreakdown }: { costBreakdown?: Itinerary['costBreak
             {breakdownItems.map(item => (
               <li key={item.label} className="flex justify-between">
                 <span className="text-muted-foreground">{item.label}</span>
-                <span className="font-medium">{item.value}</span>
+                <span className="font-medium">${item.value}</span>
               </li>
             ))}
           </ul>
           <hr className="my-4" />
           <div className="flex justify-between font-bold text-lg">
             <span>Grand Total</span>
-            <span>{costBreakdown.total}</span>
+            <span>${costBreakdown.total}</span>
           </div>
           {costBreakdown.notes && (
             <p className="text-xs text-muted-foreground mt-4">{costBreakdown.notes}</p>
@@ -158,60 +213,36 @@ const CostBreakdown = ({ costBreakdown }: { costBreakdown?: Itinerary['costBreak
   );
 };
 
-function parseTimeToMinutes(timeStr: string | undefined): number {
-    if (!timeStr) return 9999; 
-
+function sortActivities(activities: Activity[] = []) {
+  const parseTimeToMinutes = (timeStr: string | undefined): number => {
+    if (!timeStr) return 9999;
     const lowerTime = timeStr.toLowerCase().trim();
 
-    // Map for descriptive times
     const timeMap: { [key: string]: number } = {
-        'full day': 1,
-        'all day': 1,
-        'early morning': 6 * 60,
-        'morning': 9 * 60,
-        'late morning': 11 * 60,
-        'brunch': 11 * 60,
-        'lunch': 12 * 60,
-        'afternoon': 14 * 60,
-        'late afternoon': 16 * 60,
-        'evening': 18 * 60,
-        'dinner': 19 * 60,
-        'night': 21 * 60,
-        'late night': 23 * 60,
+        'full day': 1, 'all day': 1, 'early morning': 360, 'morning': 540,
+        'late morning': 660, 'brunch': 660, 'lunch': 720, 'afternoon': 840,
+        'late afternoon': 960, 'evening': 1080, 'dinner': 1140, 'night': 1260,
+        'late night': 1380,
     };
 
-    // Check for descriptive time first
     for (const key in timeMap) {
-        if (lowerTime.includes(key)) {
-            return timeMap[key];
-        }
+        if (lowerTime.includes(key)) return timeMap[key];
     }
 
-    // Regex for numeric time (e.g., "9:00 AM", "13:30", "5pm")
     const match = lowerTime.match(/(\d{1,2})[:.]?(\d{2})?\s*(am|pm)?/);
-    if (!match) {
-        // Return a high value to sort unparsable times last
-        return 9998; 
-    }
+    if (!match) return 9998;
 
     let [_, hoursStr, minutesStr, period] = match;
     let hours = parseInt(hoursStr, 10);
     const minutes = minutesStr ? parseInt(minutesStr, 10) : 0;
+    if (isNaN(hours)) return 9997;
 
-    if (isNaN(hours)) {
-        return 9997;
-    }
-
-    // Convert to 24-hour format
-    if (period === 'pm' && hours < 12) {
-        hours += 12;
-    } else if (period === 'am' && hours === 12) { // Midnight case: 12am -> 00:00
-        hours = 0;
-    }
-
+    if (period === 'pm' && hours < 12) hours += 12;
+    else if (period === 'am' && hours === 12) hours = 0;
     return hours * 60 + minutes;
+  }
+  return [...activities].sort((a, b) => parseTimeToMinutes(a.time) - parseTimeToMinutes(b.time));
 }
-
 
 export function ItineraryDisplay({ itinerary, preferences, onRestart }: ItineraryDisplayProps) {
   const [openDays, setOpenDays] = useState<string[]>(['day-1']);
@@ -225,22 +256,6 @@ export function ItineraryDisplay({ itinerary, preferences, onRestart }: Itinerar
     }, 100);
   };
   
-  let sortedItinerary = itinerary;
-  try {
-      sortedItinerary = {
-          ...itinerary,
-          days: itinerary.days.map(day => ({
-              ...day,
-              activities: [...day.activities].sort((a, b) => parseTimeToMinutes(a.time) - parseTimeToMinutes(b.time)),
-          })),
-      };
-  } catch (e) {
-      console.error("Failed to sort itinerary activities, displaying unsorted.", e);
-      // If sorting fails for any reason, use the original itinerary to prevent a crash
-      sortedItinerary = itinerary;
-  }
-  
-
   return (
     <>
       <div className="printable-area space-y-8">
@@ -276,35 +291,40 @@ export function ItineraryDisplay({ itinerary, preferences, onRestart }: Itinerar
                     </CardHeader>
                     <CardContent>
                     <Accordion type="multiple" value={openDays} onValueChange={setOpenDays} className="w-full">
-                    {sortedItinerary.days.map((day, dayIndex) => (
+                    {itinerary.days.map((day: ItineraryDay, dayIndex: number) => (
                         <AccordionItem value={`day-${day.day}`} key={dayIndex}>
                         <AccordionTrigger className="font-headline text-lg">
                             Day {day.day}: {day.date}
                         </AccordionTrigger>
                         <AccordionContent>
-                            <div className="space-y-4 pl-4 border-l-2 border-primary/50 ml-2">
-                            {day.activities.map((activity, activityIndex) => (
-                                <div key={activityIndex} className="relative flex items-start gap-4">
-                                <div className="absolute top-1 -left-[1.2rem] h-6 w-6 bg-background flex items-center justify-center rounded-full">
-                                    <span className="h-5 w-5 bg-primary/20 text-primary rounded-full flex items-center justify-center">
-                                        <ItineraryIcon type={activity.type} icon={activity.icon} className="h-3 w-3" />
-                                    </span>
-                                </div>
-                                <div className="flex-1">
-                                    <p className="font-semibold flex items-center gap-2">
-                                    <Clock className="h-4 w-4 text-muted-foreground" />
-                                    {activity.time} - {activity.name || "Activity"}
-                                    </p>
-                                    <p className="text-muted-foreground pl-6">{activity.description}</p>
-                                    <div className="pl-6 mt-2 space-y-1">
-                                        <ActivityDetail icon={MapPin} label="Location" value={activity.location} />
-                                        <ActivityDetail icon={DollarSign} label="Cost" value={activity.cost} />
-                                        <ActivityDetail icon={Bus} label="Transport" value={activity.transport} />
-                                    </div>
-                                </div>
-                                </div>
-                            ))}
-                            </div>
+                            {day.breakdown ? (
+                              <div className="divide-y">
+                                <TimeOfDayBlock 
+                                  icon={Sun}
+                                  title="Morning"
+                                  meal={day.breakdown.morning.meal}
+                                  activities={day.breakdown.morning.activities}
+                                />
+                                <TimeOfDayBlock 
+                                  icon={Sunset}
+                                  title="Afternoon"
+                                  meal={day.breakdown.afternoon.meal}
+                                  activities={day.breakdown.afternoon.activities}
+                                />
+                                <TimeOfDayBlock 
+                                  icon={Moon}
+                                  title="Night"
+                                  meal={day.breakdown.night.meal}
+                                  activities={day.breakdown.night.activities}
+                                />
+                              </div>
+                            ) : (
+                               <div className="space-y-4 pl-4 border-l-2 border-primary/50 ml-2">
+                                {sortActivities(day.activities).map((activity, activityIndex) => (
+                                    <ActivityCard key={activityIndex} activity={activity} />
+                                ))}
+                               </div>
+                            )}
                         </AccordionContent>
                         </AccordionItem>
                     ))}
