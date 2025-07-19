@@ -9,8 +9,23 @@ const CACHE_TTL_SECONDS = 5 * 60; // 5 minutes in seconds
 
 export const dynamic = 'force-dynamic';
 
+function areKVarsConfigured() {
+    return process.env.KV_REST_API_URL && process.env.KV_REST_API_TOKEN;
+}
+
+const unconfiguredError = NextResponse.json(
+    { success: false, error: 'Application is not configured for caching. Vercel KV environment variables are missing.' },
+    { status: 500 }
+);
+
 export async function POST(request: NextRequest) {
   noStore();
+
+  if (!areKVarsConfigured()) {
+    console.error('[Webhook] POST Error: Vercel KV is not configured.');
+    return unconfiguredError;
+  }
+
   const searchParams = request.nextUrl.searchParams;
   const sessionId = searchParams.get('sessionId');
 
@@ -67,6 +82,12 @@ export async function POST(request: NextRequest) {
 
 export async function GET(request: NextRequest) {
   noStore();
+
+  if (!areKVarsConfigured()) {
+    console.error('[Webhook] GET Error: Vercel KV is not configured.');
+    return unconfiguredError;
+  }
+  
   const { searchParams } = new URL(request.url);
   const sessionId = searchParams.get('sessionId');
   
