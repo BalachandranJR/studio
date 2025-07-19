@@ -74,20 +74,23 @@ const DaySection = ({ title, section }: { title: string, section?: { meal?: Acti
   
   const allActivities = [...(section.meal ? [section.meal] : []), ...(section.activities || [])];
 
-  if (allActivities.length === 0 && !section.reason) return null;
+  if (allActivities.length === 0) {
+    return section.reason ? (
+        <div className="space-y-4 py-4">
+            <h4 className="font-semibold text-md text-primary">{title}</h4>
+            <p className="pl-4 text-muted-foreground italic">{section.reason}</p>
+        </div>
+    ) : null;
+  }
 
   return (
     <div className="space-y-4 py-4">
       <h4 className="font-semibold text-md text-primary">{title}</h4>
-      {allActivities.length > 0 ? (
-        <div className="space-y-4 pl-4 border-l-2 border-primary/50 ml-2">
+      <div className="space-y-4 pl-4 border-l-2 border-primary/50 ml-2">
           {allActivities.map((activity, index) => (
             <ActivityCard key={index} activity={activity} />
           ))}
-        </div>
-      ) : (
-         section.reason && <p className="pl-4 text-muted-foreground italic">{section.reason}</p>
-      )}
+      </div>
     </div>
   );
 };
@@ -303,7 +306,11 @@ export function ItineraryDisplay({ itinerary, preferences, onRestart }: Itinerar
                     <CardContent>
                     <Accordion type="multiple" value={openDays} onValueChange={setOpenDays} className="w-full">
                     {allDays.map(({ dayNumber, date, data: day }) => {
-                       const hasContent = day && (day.morning || day.afternoon || day.evening);
+                       const hasContent = day && (
+                         (day.morning && (day.morning.meal || (day.morning.activities && day.morning.activities.length > 0))) ||
+                         (day.afternoon && (day.afternoon.meal || (day.afternoon.activities && day.afternoon.activities.length > 0))) ||
+                         (day.evening && (day.evening.meal || (day.evening.activities && day.evening.activities.length > 0)))
+                       );
 
                        return (
                         <AccordionItem value={`day-${dayNumber}`} key={dayNumber}>
@@ -400,3 +407,5 @@ export function ItinerarySkeleton() {
     </Card>
   );
 }
+
+    
