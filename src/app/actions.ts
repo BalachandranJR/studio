@@ -61,23 +61,22 @@ export async function generateItinerary(
     // The incoming body from n8n might be an array due to a Merge node.
     // We need to find the object that contains the itinerary.
     const rawPayload = Array.isArray(responseData) 
-        ? responseData.find(item => item.json?.itinerary)?.json 
-        : responseData?.json;
+        ? responseData.find(item => item.json?.data?.itinerary)?.json 
+        : responseData;
 
-    if (!rawPayload) {
-        console.error("Invalid response structure from n8n: could not find a payload with an 'itinerary' property.", responseData);
+    if (!rawPayload || !rawPayload.data) {
+        console.error("Invalid response structure from n8n: could not find a payload with a 'data.itinerary' property.", responseData);
         return { success: false, error: "The itinerary service returned an invalid response structure." };
     }
 
     // Check if the workflow returned a structured error
-    const errorCheck = N8NErrorResponseSchema.safeParse(rawPayload);
-    if (errorCheck.success && errorCheck.data.error) {
-        console.error('n8n workflow returned a business logic error:', errorCheck.data.message);
-        return { success: false, error: errorCheck.data.message };
+    if (rawPayload.success === false) {
+        console.error('n8n workflow returned a business logic error:', rawPayload.message);
+        return { success: false, error: rawPayload.message };
     }
     
     // Validate the successful response structure
-    const result = N8NSuccessResponseSchema.safeParse(rawPayload);
+    const result = N8NSuccessResponseSchema.safeParse(rawPayload.data);
 
     if (!result.success) {
       console.error("Invalid itinerary structure received from n8n:", result.error.flatten());
