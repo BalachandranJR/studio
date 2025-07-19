@@ -96,20 +96,6 @@ export const ActivitySchema = z.object({
 });
 
 const DayBreakdownSchema = z.object({
-    morning: z.object({
-        meal: ActivitySchema.nullable().optional(),
-        activities: z.array(ActivitySchema).optional(),
-    }).optional(),
-    afternoon: z.object({
-        meal: ActivitySchema.nullable().optional(),
-        activities: z.array(ActivitySchema).optional(),
-    }).optional(),
-    night: z.object({
-        meal: ActivitySchema.nullable().optional(),
-        activities: z.array(ActivitySchema).optional(),
-    }).optional(),
-    
-    // Fallback for different naming conventions from n8n
     startOfDay: ActivitySchema.nullable().optional(),
     breakfast: ActivitySchema.nullable().optional(),
     morningActivities: z.array(ActivitySchema).optional(),
@@ -126,7 +112,7 @@ export const ItineraryDaySchema = z.object({
   day: z.number().describe("The day number of the itinerary, starting from 1."),
   date: z.string().describe("The date for this day's activities."),
   activities: z.array(ActivitySchema).optional().describe("A flat list of activities for the day, for backward compatibility."),
-  // Making the breakdown flexible to accept 'breakdown' or 'template'
+  meals: z.array(ActivitySchema).optional(),
   breakdown: DayBreakdownSchema.optional(),
   template: DayBreakdownSchema.optional(),
 });

@@ -72,15 +72,13 @@ const ActivityCard = ({ activity }: { activity: Activity }) => {
 const TimeOfDayBlock = ({
   icon: Icon,
   title,
-  meal,
   activities
 }: {
   icon: React.ElementType,
   title: string,
-  meal: Activity | null | undefined,
   activities: Activity[] | undefined
 }) => {
-  if (!meal && (!activities || activities.length === 0)) {
+  if (!activities || activities.length === 0) {
     return null;
   }
   return (
@@ -90,8 +88,7 @@ const TimeOfDayBlock = ({
         {title}
       </h4>
       <div className="space-y-4 pl-4 border-l-2 border-primary/50 ml-2">
-        {meal && <ActivityCard activity={meal} />}
-        {activities && activities.map((activity, index) => (
+        {activities.map((activity, index) => (
             <ActivityCard key={index} activity={activity} />
         ))}
       </div>
@@ -263,7 +260,6 @@ function parseDate(dateStr: string): Date | null {
   return null;
 }
 
-
 export function ItineraryDisplay({ itinerary, preferences, onRestart }: ItineraryDisplayProps) {
   const [openDays, setOpenDays] = useState<string[]>(['day-1']);
   
@@ -290,7 +286,6 @@ export function ItineraryDisplay({ itinerary, preferences, onRestart }: Itinerar
       const currentDate = addDays(startDate, i);
       const currentDateStr = format(currentDate, 'yyyy-MM-dd');
       
-      // Find the corresponding day from the itinerary data by matching the date string
       const itineraryDay = itinerary.days.find(d => {
           if (!d.date) return false;
           const dayDate = parseDate(d.date);
@@ -340,23 +335,39 @@ export function ItineraryDisplay({ itinerary, preferences, onRestart }: Itinerar
                     <CardContent>
                     <Accordion type="multiple" value={openDays} onValueChange={setOpenDays} className="w-full">
                     {allDays.map(({ dayNumber, date, data: day }) => {
-                       // This logic is now much more robust to handle different data structures from n8n.
-                       const b = day?.breakdown ?? day?.template; // Use 'breakdown' or 'template'
+                       const dayTemplate = day?.template ?? day?.breakdown;
                        
-                       const morningMeal = b?.breakfast ?? b?.morning?.meal;
-                       const morningActivities = b?.morningActivities ?? b?.morning?.activities;
-                       
-                       const afternoonMeal = b?.lunch ?? b?.afternoon?.meal;
-                       const afternoonActivities = b?.afternoonActivities ?? b?.afternoon?.activities ?? b?.middayActivities;
-                       
-                       const nightMeal = b?.dinner ?? b?.night?.meal;
-                       const nightActivities = b?.nightlife ?? b?.nightlifeActivities ?? b?.night?.activities;
+                       const getActivitiesForPeriod = (period: 'morning' | 'afternoon' | 'night'): Activity[] => {
+                            if (period === 'morning') {
+                                return [
+                                    ...(dayTemplate?.breakfast ? [dayTemplate.breakfast] : []),
+                                    ...(dayTemplate?.morningActivities || [])
+                                ];
+                            }
+                            if (period === 'afternoon') {
+                                return [
+                                    ...(dayTemplate?.lunch ? [dayTemplate.lunch] : []),
+                                    ...(dayTemplate?.afternoonActivities || []),
+                                    ...(dayTemplate?.middayActivities || [])
+                                ];
+                            }
+                            if (period === 'night') {
+                                const nightlife = dayTemplate?.nightlife;
+                                const nightlifeArray = Array.isArray(nightlife) ? nightlife : (nightlife ? [nightlife] : []);
+                                return [
+                                    ...(dayTemplate?.dinner ? [dayTemplate.dinner] : []),
+                                    ...nightlifeArray,
+                                    ...(dayTemplate?.nightlifeActivities || [])
+                                ];
+                            }
+                            return [];
+                       };
 
-                       const hasContent = morningMeal || afternoonMeal || nightMeal ||
-                                          (morningActivities && morningActivities.length > 0) ||
-                                          (afternoonActivities && afternoonActivities.length > 0) ||
-                                          (nightActivities && nightActivities.length > 0) ||
-                                          (day?.activities && day.activities.length > 0);
+                       const morningActivities = getActivitiesForPeriod('morning');
+                       const afternoonActivities = getActivitiesForPeriod('afternoon');
+                       const nightActivities = getActivitiesForPeriod('night');
+
+                       const hasContent = morningActivities.length > 0 || afternoonActivities.length > 0 || nightActivities.length > 0 || (day?.activities && day.activities.length > 0);
 
                        return (
                         <AccordionItem value={`day-${dayNumber}`} key={dayNumber}>
@@ -365,36 +376,34 @@ export function ItineraryDisplay({ itinerary, preferences, onRestart }: Itinerar
                         </AccordionTrigger>
                         <AccordionContent>
                            {hasContent ? (
-                                b ? (
+                                // Use the structured template if it exists and has content
+                                (morningActivities.length > 0 || afternoonActivities.length > 0 || nightActivities.length > 0) ? (
                                   <div className="divide-y">
                                     <TimeOfDayBlock 
                                       icon={Sun}
                                       title="Morning"
-                                      meal={morningMeal}
-                                      activities={morningActivities}
+                                      activities={sortActivities(morningActivities)}
                                     />
                                     <TimeOfDayBlock 
                                       icon={Sunset}
                                       title="Afternoon"
-                                      meal={afternoonMeal}
-                                      activities={afternoonActivities}
+                                      activities={sortActivities(afternoonActivities)}
                                     />
                                     <TimeOfDayBlock 
                                       icon={Moon}
                                       title="Night"
-                                      meal={nightMeal}
-                                      activities={nightActivities}
+                                      activities={sortActivities(nightActivities)}
                                     />
                                   </div>
                                 ) : ( // Fallback to flat activities list if breakdown is missing
-                                   <div className="space-y-4 pl-4 border-l-2 border-primary/50 ml-2">
+                                   <div className="space-y-4 pl-4 border-l-2 border-primary/50 ml-2 py-4">
                                     {sortActivities(day?.activities).map((activity, activityIndex) => (
                                         <ActivityCard key={activityIndex} activity={activity} />
                                     ))}
                                    </div>
                                 )
                             ) : (
-                              <div className="pl-4 text-muted-foreground italic">No activities planned for this day.</div>
+                              <div className="pl-4 text-muted-foreground italic py-4">No activities planned for this day.</div>
                             )}
                         </AccordionContent>
                         </AccordionItem>
