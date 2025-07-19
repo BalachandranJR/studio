@@ -94,7 +94,6 @@ export const ActivitySchema = z.object({
   notes: z.string().optional(),
 });
 
-// This now matches the `template` object from your n8n workflow
 const DayTemplateSchema = z.object({
     startOfDay: ActivitySchema.nullable().optional(),
     breakfast: ActivitySchema.nullable().optional(),
@@ -133,7 +132,6 @@ export const CostBreakdownSchema = z.object({
     notes: z.string().optional(),
 });
 
-// Main Itinerary Schema now uses the corrected Day schema
 export const ItinerarySchema = z.object({
   id: z.string().optional(),
   destination: z.string({ required_error: "Destination is required." }),

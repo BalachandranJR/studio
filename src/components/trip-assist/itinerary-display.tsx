@@ -3,7 +3,7 @@
 
 import { useState } from "react";
 import { format, parse, addDays, differenceInDays, isValid } from "date-fns";
-import { Download, RotateCcw, Calendar as CalendarIcon, Clock, MapPin, DollarSign, Bus, Users, Utensils, Sparkles, Wallet, Plane, Home, CreditCard, Sun, Sunset, Moon, Info } from "lucide-react";
+import { Download, RotateCcw, Calendar as CalendarIcon, Clock, MapPin, DollarSign, Bus, Users, Utensils, Sparkles, Wallet, Plane, Home, CreditCard, Sun, Sunset, Moon, Info, Star, Coffee, Bed } from "lucide-react";
 
 import { ItineraryIcon } from "@/components/icons";
 import {
@@ -69,31 +69,20 @@ const ActivityCard = ({ activity }: { activity: Activity }) => {
     );
 };
 
-const TimeOfDayBlock = ({
-  icon: Icon,
-  title,
-  activities
-}: {
-  icon: React.ElementType,
-  title: string,
-  activities: Activity[]
-}) => {
-  if (!activities || activities.length === 0) {
-    return null;
-  }
+const DaySection = ({ title, activities }: { title: string, activities: (Activity | null | undefined)[] }) => {
+  const validActivities = activities.filter((a): a is Activity => !!a);
+  if (validActivities.length === 0) return null;
+
   return (
     <div className="space-y-4 py-4">
-      <h4 className="flex items-center gap-2 font-semibold text-md text-primary">
-        <Icon className="h-5 w-5" />
-        {title}
-      </h4>
+      <h4 className="font-semibold text-md text-primary">{title}</h4>
       <div className="space-y-4 pl-4 border-l-2 border-primary/50 ml-2">
-        {activities.map((activity, index) => (
-            activity && <ActivityCard key={index} activity={activity} />
+        {validActivities.map((activity, index) => (
+          <ActivityCard key={index} activity={activity} />
         ))}
       </div>
     </div>
-  )
+  );
 };
 
 const SummaryDetail = ({ icon: Icon, label, value }: { icon: React.ElementType, label: string, value: string | React.ReactNode }) => {
@@ -213,13 +202,10 @@ const CostBreakdown = ({ costBreakdown }: { costBreakdown?: Itinerary['costBreak
   );
 };
 
-// This function robustly parses a date string, trying multiple formats.
 function parseDate(dateStr: string): Date | null {
   if (!dateStr) return null;
-  // Try parsing YYYY-MM-DD first (most reliable)
   let date = parse(dateStr, 'yyyy-MM-dd', new Date());
   if (isValid(date)) return date;
-  // Fallback to JS Date constructor for other formats like 'Jul 19, 2025' or ISO strings
   date = new Date(dateStr);
   if (isValid(date)) return date;
   return null;
@@ -237,7 +223,6 @@ export function ItineraryDisplay({ itinerary, preferences, onRestart }: Itinerar
     }, 100);
   };
 
-  // Use the original preference dates as the source of truth
   const startDate = preferences.dates.from;
   const endDate = preferences.dates.to;
 
@@ -253,7 +238,6 @@ export function ItineraryDisplay({ itinerary, preferences, onRestart }: Itinerar
       
       const itineraryDay = itinerary.days.find(d => {
           if (!d.date) return false;
-          // Normalize the date from the itinerary before comparing
           const dayDate = parseDate(d.date);
           return dayDate ? format(dayDate, 'yyyy-MM-dd') === currentDateStr : false;
       });
@@ -302,44 +286,21 @@ export function ItineraryDisplay({ itinerary, preferences, onRestart }: Itinerar
                     <Accordion type="multiple" value={openDays} onValueChange={setOpenDays} className="w-full">
                     {allDays.map(({ dayNumber, date, data: day }) => {
                        const dayTemplate = day?.template;
-                       
-                       // This function now correctly gathers all activities from the template
-                       const getActivitiesForPeriod = (period: 'morning' | 'afternoon' | 'night'): Activity[] => {
-                           if (!dayTemplate) return [];
-                           
-                           let activities: (Activity | null | undefined)[] = [];
-                           
-                           if (period === 'morning') {
-                               activities = [
-                                   dayTemplate.startOfDay,
-                                   dayTemplate.breakfast,
-                                   ...(dayTemplate.morningActivities || [])
-                               ];
-                           } else if (period === 'afternoon') {
-                               activities = [
-                                   dayTemplate.lunch,
-                                   ...(dayTemplate.middayActivities || []),
-                                   ...(dayTemplate.eveningActivities || [])
-                               ];
-                           } else if (period === 'night') {
-                               activities = [
-                                   dayTemplate.dinner,
-                                   ...(dayTemplate.nightlifeActivities || []),
-                                   dayTemplate.endOfDay
-                               ];
-                           }
-                           
-                           // Filter out any null/undefined entries and sort by time
-                           return activities
-                               .filter((a): a is Activity => !!a)
-                               .sort((a, b) => (a.time || "99:99").localeCompare(b.time || "99:99"));
-                       };
+                       const eveningActivities = [
+                          ...(dayTemplate?.eveningActivities || []),
+                          ...(dayTemplate?.nightlifeActivities || []),
+                       ].filter(Boolean);
 
-                       const morningActivities = getActivitiesForPeriod('morning');
-                       const afternoonActivities = getActivitiesForPeriod('afternoon');
-                       const nightActivities = getActivitiesForPeriod('night');
-
-                       const hasContent = morningActivities.length > 0 || afternoonActivities.length > 0 || nightActivities.length > 0;
+                       const hasContent = dayTemplate && (
+                          dayTemplate.startOfDay ||
+                          dayTemplate.breakfast ||
+                          dayTemplate.morningActivities?.length > 0 ||
+                          dayTemplate.lunch ||
+                          dayTemplate.middayActivities?.length > 0 ||
+                          dayTemplate.dinner ||
+                          eveningActivities.length > 0 ||
+                          dayTemplate.endOfDay
+                       );
 
                        return (
                         <AccordionItem value={`day-${dayNumber}`} key={dayNumber}>
@@ -349,21 +310,17 @@ export function ItineraryDisplay({ itinerary, preferences, onRestart }: Itinerar
                         <AccordionContent>
                            {hasContent ? (
                                   <div className="divide-y">
-                                    <TimeOfDayBlock 
-                                      icon={Sun}
-                                      title="Morning"
-                                      activities={morningActivities}
-                                    />
-                                    <TimeOfDayBlock 
-                                      icon={Sunset}
-                                      title="Afternoon"
-                                      activities={afternoonActivities}
-                                    />
-                                    <TimeOfDayBlock 
-                                      icon={Moon}
-                                      title="Night"
-                                      activities={nightActivities}
-                                    />
+                                    <DaySection title="Start of the Day" activities={[dayTemplate.startOfDay]} />
+                                    <DaySection title="Breakfast" activities={[dayTemplate.breakfast]} />
+                                    <DaySection title="Morning Activities" activities={dayTemplate.morningActivities || []} />
+                                    
+                                    <DaySection title="Midday / Lunch" activities={[dayTemplate.lunch]} />
+                                    <DaySection title="Afternoon Activities" activities={dayTemplate.middayActivities || []} />
+
+                                    <DaySection title="Evening / Dinner" activities={[dayTemplate.dinner]} />
+                                    <DaySection title="Nightlife" activities={eveningActivities} />
+                                    
+                                    <DaySection title="End of the Day" activities={[dayTemplate.endOfDay]} />
                                   </div>
                             ) : (
                               <div className="pl-4 text-muted-foreground italic py-4">No activities planned for this day.</div>
