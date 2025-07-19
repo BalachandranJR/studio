@@ -7,15 +7,6 @@ import { v4 as uuidv4 } from 'uuid';
 import { ItinerarySchema, travelPreferenceSchema } from '@/lib/types';
 import type { Itinerary } from '@/lib/types';
 
-function getAppUrl() {
-  const appUrl = process.env.NEXT_PUBLIC_APP_URL;
-  if (!appUrl) {
-    console.error('CRITICAL: NEXT_PUBLIC_APP_URL is not set. Using fallback for local dev.');
-    return 'http://localhost:9002';
-  }
-  return appUrl.startsWith('http') ? appUrl : `https://${appUrl}`;
-}
-
 const actionSchema = travelPreferenceSchema.extend({
   dates: z.object({
     from: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "Invalid start date format"),
@@ -26,16 +17,12 @@ const actionSchema = travelPreferenceSchema.extend({
 // This type represents the expected successful response from the n8n workflow
 const N8NSuccessResponseSchema = z.object({
   itinerary: ItinerarySchema,
-  sessionId: z.string().optional(),
-  callbackUrl: z.string().url().optional(),
 });
 
 // This type represents a potential error response from the n8n workflow
 const N8NErrorResponseSchema = z.object({
   error: z.boolean(),
   message: z.string(),
-  sessionId: z.string().nullable().optional(),
-  callbackUrl: z.string().url().nullable().optional(),
 });
 
 export async function generateItinerary(
@@ -53,19 +40,15 @@ export async function generateItinerary(
       return { success: false, error: 'The application is not configured to connect to the itinerary generation service. Please contact support.' };
     }
     
-    const sessionId = uuidv4();
-    const appUrl = getAppUrl();
-    // This callback is now used by n8n to trace requests but is not polled by the frontend.
-    const callbackUrl = `${appUrl}/api/webhook?sessionId=${sessionId}`;
-
-    console.log(`Starting n8n workflow. Session ID: ${sessionId}`);
+    console.log(`Starting n8n workflow directly.`);
 
     const response = await fetch(n8nWebhookUrl, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
       },
-      body: JSON.stringify({ ...validatedData, callbackUrl, sessionId }),
+      // The body now only contains the user preferences
+      body: JSON.stringify(validatedData),
     });
 
     if (!response.ok) {
