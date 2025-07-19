@@ -87,27 +87,27 @@ export const ActivitySchema = z.object({
   name: z.string().optional().describe("The name of the activity."),
   description: z.string().describe("A brief description of the activity."),
   type: z.string().describe("The category of the activity.").catch("activity"), 
-  icon: z.string().describe("An icon name representing the activity type.").catch("default"),
+  icon: z.string().optional().describe("An icon name representing the activity type.").catch("default"),
   location: z.string().optional(),
   cost: z.union([z.string(), z.number()]).optional(),
   transport: z.string().optional(),
   notes: z.string().optional(),
 });
 
-const DayBreakdownSchema = z.object({
-    breakfast: ActivitySchema.nullable().optional(),
-    morningActivities: z.array(ActivitySchema).optional(),
-    lunch: ActivitySchema.nullable().optional(),
-    afternoonActivities: z.array(ActivitySchema).optional(),
-    dinner: ActivitySchema.nullable().optional(),
-    nightlifeActivities: z.array(ActivitySchema).optional(),
+const DaySectionSchema = z.object({
+    meal: ActivitySchema.nullable().optional(),
+    activities: z.array(ActivitySchema).optional(),
+    reason: z.string().nullable().optional(),
 });
 
 export const ItineraryDaySchema = z.object({
   day: z.number().describe("The day number of the itinerary, starting from 1."),
   date: z.string().describe("The date for this day's activities."),
-  activities: z.array(ActivitySchema).optional().describe("A flat list of all activities for the day."),
-  breakdown: DayBreakdownSchema.optional().describe("The structured breakdown of activities for the day."),
+  activities: z.array(ActivitySchema).optional().describe("A flat list of all activities for the day for backward compatibility."),
+  morning: DaySectionSchema.optional(),
+  afternoon: DaySectionSchema.optional(),
+  evening: DaySectionSchema.optional(),
+  breakdown: z.any().optional(), // Keep for backward compatibility if needed
 });
 
 export const AccommodationSchema = z.object({

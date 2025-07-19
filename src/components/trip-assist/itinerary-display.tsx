@@ -23,7 +23,7 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
-import type { Itinerary, Activity, TravelPreference } from "@/lib/types";
+import type { Itinerary, Activity, ItineraryDay, TravelPreference } from "@/lib/types";
 import { ageGroups, areasOfInterest, transportOptions, foodPreferences } from "@/lib/types";
 
 interface ItineraryDisplayProps {
@@ -49,7 +49,7 @@ const ActivityCard = ({ activity }: { activity: Activity }) => {
         <div className="relative flex items-start gap-4">
             <div className="absolute top-1 -left-[1.2rem] h-6 w-6 bg-background flex items-center justify-center rounded-full">
                 <span className="h-5 w-5 bg-primary/20 text-primary rounded-full flex items-center justify-center">
-                    <ItineraryIcon type={activity.type} icon={activity.icon} className="h-3 w-3" />
+                    <ItineraryIcon type={activity.type} icon={activity.icon || activity.type} className="h-3 w-3" />
                 </span>
             </div>
             <div className="flex-1">
@@ -69,18 +69,25 @@ const ActivityCard = ({ activity }: { activity: Activity }) => {
     );
 };
 
-const DaySection = ({ title, activities }: { title: string, activities: (Activity | null | undefined)[] }) => {
-  const validActivities = activities.filter((a): a is Activity => !!a);
-  if (validActivities.length === 0) return null;
+const DaySection = ({ title, section }: { title: string, section?: { meal?: Activity | null, activities?: Activity[], reason?: string | null } }) => {
+  if (!section) return null;
+  
+  const allActivities = [...(section.meal ? [section.meal] : []), ...(section.activities || [])];
+
+  if (allActivities.length === 0 && !section.reason) return null;
 
   return (
     <div className="space-y-4 py-4">
       <h4 className="font-semibold text-md text-primary">{title}</h4>
-      <div className="space-y-4 pl-4 border-l-2 border-primary/50 ml-2">
-        {validActivities.map((activity, index) => (
-          <ActivityCard key={index} activity={activity} />
-        ))}
-      </div>
+      {allActivities.length > 0 ? (
+        <div className="space-y-4 pl-4 border-l-2 border-primary/50 ml-2">
+          {allActivities.map((activity, index) => (
+            <ActivityCard key={index} activity={activity} />
+          ))}
+        </div>
+      ) : (
+         section.reason && <p className="pl-4 text-muted-foreground italic">{section.reason}</p>
+      )}
     </div>
   );
 };
@@ -296,17 +303,7 @@ export function ItineraryDisplay({ itinerary, preferences, onRestart }: Itinerar
                     <CardContent>
                     <Accordion type="multiple" value={openDays} onValueChange={setOpenDays} className="w-full">
                     {allDays.map(({ dayNumber, date, data: day }) => {
-                       const dayBreakdown = day?.breakdown;
-                       const flatActivities = day?.activities || [];
-                       
-                       const hasContent = (dayBreakdown && (
-                          dayBreakdown.breakfast ||
-                          (dayBreakdown.morningActivities && dayBreakdown.morningActivities.length > 0) ||
-                          dayBreakdown.lunch ||
-                          (dayBreakdown.afternoonActivities && dayBreakdown.afternoonActivities.length > 0) ||
-                          dayBreakdown.dinner ||
-                          (dayBreakdown.nightlifeActivities && dayBreakdown.nightlifeActivities.length > 0)
-                       )) || flatActivities.length > 0;
+                       const hasContent = day && (day.morning || day.afternoon || day.evening);
 
                        return (
                         <AccordionItem value={`day-${dayNumber}`} key={dayNumber}>
@@ -315,19 +312,11 @@ export function ItineraryDisplay({ itinerary, preferences, onRestart }: Itinerar
                         </AccordionTrigger>
                         <AccordionContent>
                            {hasContent ? (
-                                dayBreakdown ? (
-                                  <div className="divide-y">
-                                    <DaySection title="Morning" activities={[dayBreakdown.breakfast, ...(dayBreakdown.morningActivities || [])]} />
-                                    <DaySection title="Afternoon" activities={[dayBreakdown.lunch, ...(dayBreakdown.afternoonActivities || [])]} />
-                                    <DaySection title="Evening" activities={[dayBreakdown.dinner, ...(dayBreakdown.nightlifeActivities || [])]} />
-                                  </div>
-                                ) : (
-                                  <div className="space-y-4 py-4 pl-4 border-l-2 border-primary/50 ml-2">
-                                      {flatActivities.map((activity, index) => (
-                                          <ActivityCard key={index} activity={activity} />
-                                      ))}
-                                  </div>
-                                )
+                                <div className="divide-y">
+                                    <DaySection title="Morning" section={day.morning} />
+                                    <DaySection title="Afternoon" section={day.afternoon} />
+                                    <DaySection title="Evening" section={day.evening} />
+                                </div>
                             ) : (
                               <div className="pl-4 text-muted-foreground italic py-4">No activities planned for this day.</div>
                             )}

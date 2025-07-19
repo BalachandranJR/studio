@@ -1,6 +1,9 @@
 
 {
   "functions": {
+    "src/app/api/webhook/**": {
+      "maxDuration": 300
+    },
     "src/app/page.tsx": {
       "maxDuration": 300
     }

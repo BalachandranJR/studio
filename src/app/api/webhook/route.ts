@@ -8,7 +8,7 @@ import os from 'os';
 
 // Define the expected schema for the incoming POST request body
 const webhookPayloadSchema = z.object({
-  itinerary: ItinerarySchema.or(z.array(z.object({ itinerary: ItinerarySchema }))),
+  itinerary: ItinerarySchema,
   sessionId: z.string().uuid(),
 });
 
