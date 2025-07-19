@@ -14,14 +14,20 @@ const actionSchema = travelPreferenceSchema.extend({
   })
 });
 
-// This type represents the expected successful response from the n8n workflow
-const N8NSuccessResponseSchema = z.object({
+// This now represents the 'data' object within the n8n response
+const N8NResponseDataSchema = z.object({
   itinerary: ItinerarySchema,
+});
+
+// This represents the top-level structure from the n8n workflow
+const N8NSuccessResponseSchema = z.object({
+    success: z.literal(true),
+    data: N8NResponseDataSchema
 });
 
 // This type represents a potential error response from the n8n workflow
 const N8NErrorResponseSchema = z.object({
-  error: z.boolean(),
+  success: z.literal(false),
   message: z.string(),
 });
 
@@ -48,6 +54,7 @@ export async function generateItinerary(
         'Content-Type': 'application/json',
       },
       body: JSON.stringify(validatedData),
+      cache: 'no-store', // Ensure we always get a fresh response
     });
 
     if (!response.ok) {
@@ -58,35 +65,31 @@ export async function generateItinerary(
 
     const responseData = await response.json();
     
-    // The incoming body from n8n might be an array due to a Merge node.
-    // We need to find the object that contains the itinerary.
-    const rawPayload = Array.isArray(responseData) 
-        ? responseData.find(item => item.json?.data?.itinerary)?.json 
-        : responseData;
+    // The incoming body from the new n8n workflow should be a single object.
+    // Let's add more detailed logging to be sure.
+    console.log("Received data from n8n:", JSON.stringify(responseData, null, 2));
 
-    if (!rawPayload || !rawPayload.data) {
-        console.error("Invalid response structure from n8n: could not find a payload with a 'data.itinerary' property.", responseData);
-        return { success: false, error: "The itinerary service returned an invalid response structure." };
-    }
-
-    // Check if the workflow returned a structured error
-    if (rawPayload.success === false) {
-        console.error('n8n workflow returned a business logic error:', rawPayload.message);
-        return { success: false, error: rawPayload.message };
+    // Check if the workflow returned a structured error first
+    if (responseData.success === false) {
+        console.error('n8n workflow returned a business logic error:', responseData.message);
+        return { success: false, error: responseData.message || "The itinerary service reported an unspecified error." };
     }
     
     // Validate the successful response structure
-    const result = N8NSuccessResponseSchema.safeParse(rawPayload.data);
+    const result = N8NSuccessResponseSchema.safeParse(responseData);
 
     if (!result.success) {
       console.error("Invalid itinerary structure received from n8n:", result.error.flatten());
       return { success: false, error: "The itinerary service returned an unexpected data format." };
     }
 
-    return { success: true, itinerary: result.data.itinerary };
+    return { success: true, itinerary: result.data.data.itinerary };
 
   } catch (error) {
     console.error('Error in generateItinerary action:', error);
+    if (error instanceof z.ZodError) {
+        return { success: false, error: 'There was a validation error with the form data.' };
+    }
     const errorMessage = error instanceof Error ? error.message : 'An unexpected error occurred while generating the itinerary.';
     return { success: false, error: errorMessage };
   }
