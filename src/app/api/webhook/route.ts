@@ -31,12 +31,9 @@ export async function POST(request: NextRequest) {
       const errorMessage = typeof body.error === 'object' ? JSON.stringify(body.error) : body.error;
       dataToCache = { error: `An error occurred in the n8n workflow: ${errorMessage}` };
     } else {
-      const itineraryData = body.itinerary;
-      if (!itineraryData) {
-        throw new Error("Payload from n8n is missing the 'itinerary' object.");
-      }
-      
-      const validatedItinerary = ItinerarySchema.parse(itineraryData);
+      // The entire body is the itinerary object from the n8n workflow.
+      // We parse the body directly, not a nested property.
+      const validatedItinerary = ItinerarySchema.parse(body);
       dataToCache = { itinerary: validatedItinerary };
       console.log(`[Webhook] Successfully validated itinerary for sessionId: ${sessionId}, storing in cache.`);
     }
