@@ -1,7 +1,7 @@
 
 "use client";
 
-import { useEffect, useState, useCallback, useRef } from "react";
+import { useState, useRef } from "react";
 import { PlaneTakeoff, Loader2 } from "lucide-react";
 import useEmblaCarousel from 'embla-carousel-react';
 import Autoplay from 'embla-carousel-autoplay';
@@ -14,29 +14,6 @@ import { ItineraryDisplay } from "@/components/trip-assist/itinerary-display";
 import { TravelPreferenceForm } from "@/components/trip-assist/travel-preference-form";
 import type { Itinerary, TravelPreference } from "@/lib/types";
 import { Button } from "@/components/ui/button";
-
-const POLLING_INTERVAL_MS = 3000;
-const POLLING_TIMEOUT_MS = 300000; // 5 minutes
-
-// The result from the webhook is now typed to reflect the actual nested structure
-type PollResult = {
-    itinerary?: Itinerary;
-    error?: string;
-    status?: string;
-} | {
-    // This handles the case where the n8n workflow returns an array
-    itinerary: Itinerary
-}[];
-
-
-async function pollForResult(sessionId: string): Promise<PollResult> {
-    const response = await fetch(`/api/webhook?sessionId=${sessionId}`);
-    if (!response.ok) {
-        throw new Error(`Polling failed with status ${response.status}`);
-    }
-    const data = await response.json();
-    return data;
-}
 
 const LoadingAnimation = () => {
     const autoplay = useRef(Autoplay({ delay: 4000, stopOnInteraction: false }));
@@ -97,74 +74,11 @@ export default function Home() {
   const [itinerary, setItinerary] = useState<Itinerary | null>(null);
   const [submittedPreferences, setSubmittedPreferences] = useState<TravelPreference | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const [sessionId, setSessionId] = useState<string | null>(null);
-  const pollingIntervalRef = useRef<NodeJS.Timeout | null>(null);
-
-  const cleanupPolling = useCallback(() => {
-    if (pollingIntervalRef.current) {
-      clearTimeout(pollingIntervalRef.current);
-      pollingIntervalRef.current = null;
-    }
-  }, []);
-
-  const startPolling = useCallback((sid: string) => {
-    cleanupPolling();
-    
-    const startTime = Date.now();
-
-    const poll = async () => {
-        if (Date.now() - startTime > POLLING_TIMEOUT_MS) {
-            cleanupPolling();
-            setError("The request timed out. The itinerary generation service might be busy or failed to respond. Please try again later.");
-            setAppState('error');
-            return;
-        }
-
-        try {
-            const result = await pollForResult(sid);
-
-            // **THE CRITICAL FIX IS HERE**
-            // Check if the result is the array from n8n and extract the itinerary object
-            const itineraryData = Array.isArray(result) ? result[0]?.itinerary : result?.itinerary;
-            const errorData = (result as { error?: string })?.error;
-
-
-            if (itineraryData) {
-                cleanupPolling();
-                setItinerary(itineraryData);
-                setAppState('result');
-            } else if (errorData) {
-                cleanupPolling();
-                setError(errorData);
-                setAppState('error');
-            } else {
-                pollingIntervalRef.current = setTimeout(poll, POLLING_INTERVAL_MS);
-            }
-        } catch (err) {
-            cleanupPolling();
-            const errorMessage = err instanceof Error ? err.message : "An unknown error occurred while checking for your itinerary.";
-            setError(errorMessage);
-            setAppState('error');
-        }
-    };
-    
-    pollingIntervalRef.current = setTimeout(poll, POLLING_INTERVAL_MS);
-
-  }, [cleanupPolling]);
-
-
-  useEffect(() => {
-    return () => {
-      cleanupPolling();
-    };
-  }, [cleanupPolling]);
-
 
   const handleFormSubmit = async (data: TravelPreference) => {
     setAppState('loading');
     setError(null);
     setItinerary(null);
-    setSessionId(null);
     
     const processedData = {
       ...data,
@@ -179,8 +93,8 @@ export default function Home() {
     const result = await generateItinerary(processedData);
 
     if (result.success) {
-      setSessionId(result.sessionId);
-      startPolling(result.sessionId);
+      setItinerary(result.itinerary);
+      setAppState('result');
     } else {
       console.error("Error from generateItinerary action:", result.error);
       setError(result.error);
@@ -191,10 +105,8 @@ export default function Home() {
   const resetApp = () => {
     setItinerary(null);
     setError(null);
-    setSessionId(null);
     setSubmittedPreferences(null);
     setAppState('form');
-    cleanupPolling();
   };
   
   const startForm = () => {
