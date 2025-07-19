@@ -7,16 +7,13 @@ import useEmblaCarousel from 'embla-carousel-react';
 import Autoplay from 'embla-carousel-autoplay';
 import { format } from "date-fns";
 
-import { generateItinerary, pollForResult } from "@/app/actions";
+import { generateItinerary } from "@/app/actions";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { ItineraryDisplay } from "@/components/trip-assist/itinerary-display";
 import { TravelPreferenceForm } from "@/components/trip-assist/travel-preference-form";
 import type { Itinerary, TravelPreference } from "@/lib/types";
 import { Button } from "@/components/ui/button";
-
-const POLLING_INTERVAL = 3000; // 3 seconds
-const POLLING_TIMEOUT = 5 * 60 * 1000; // 5 minutes
 
 const LoadingAnimation = () => {
     const autoplay = useRef(Autoplay({ delay: 4000, stopOnInteraction: false }));
@@ -77,15 +74,7 @@ export default function Home() {
   const [itinerary, setItinerary] = useState<Itinerary | null>(null);
   const [submittedPreferences, setSubmittedPreferences] = useState<TravelPreference | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const pollTimeoutRef = useRef<NodeJS.Timeout | null>(null);
-
-  const cleanupPolling = () => {
-    if (pollTimeoutRef.current) {
-      clearTimeout(pollTimeoutRef.current);
-      pollTimeoutRef.current = null;
-    }
-  };
-
+  
   const handleFormSubmit = async (data: TravelPreference) => {
     setAppState('loading');
     setError(null);
@@ -104,55 +93,14 @@ export default function Home() {
     const result = await generateItinerary(processedData);
 
     if (result.success) {
-      const { sessionId } = result;
-      const startTime = Date.now();
-
-      const poll = async () => {
-        // Check for timeout
-        if (Date.now() - startTime > POLLING_TIMEOUT) {
-          setError("The itinerary generation service took too long to respond. Please try again later.");
-          setAppState('error');
-          cleanupPolling();
-          return;
-        }
-
-        try {
-          const pollRes = await pollForResult(sessionId);
-
-          if (pollRes.itinerary) {
-            // The critical fix is here: Extract the itinerary from the array structure if it exists
-            const itineraryData = Array.isArray(pollRes.itinerary) ? pollRes.itinerary[0]?.itinerary : pollRes.itinerary;
-            setItinerary(itineraryData);
-            setAppState('result');
-            cleanupPolling();
-          } else if (pollRes.error) {
-            setError(pollRes.error);
-            setAppState('error');
-            cleanupPolling();
-          } else {
-            // If no itinerary and no error, keep polling
-            pollTimeoutRef.current = setTimeout(poll, POLLING_INTERVAL);
-          }
-        } catch (pollError) {
-          console.error("Polling error:", pollError);
-          setError("There was a problem checking the status of your itinerary. Please check your connection and try again.");
-          setAppState('error');
-          cleanupPolling();
-        }
-      };
-
-      pollTimeoutRef.current = setTimeout(poll, POLLING_INTERVAL);
+      setItinerary(result.itinerary);
+      setAppState('result');
     } else {
       console.error("Error from generateItinerary action:", result.error);
       setError(result.error);
       setAppState('error');
     }
   };
-  
-  // Cleanup on unmount
-  useEffect(() => {
-    return () => cleanupPolling();
-  }, []);
   
   const resetApp = () => {
     setItinerary(null);

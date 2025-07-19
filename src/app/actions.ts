@@ -23,14 +23,24 @@ const actionSchema = travelPreferenceSchema.extend({
   })
 });
 
-export type PollResult = {
-    itinerary?: Itinerary;
-    error?: string;
-};
+// This type represents the expected successful response from the n8n workflow
+const N8NSuccessResponseSchema = z.object({
+  itinerary: ItinerarySchema,
+  sessionId: z.string().optional(),
+  callbackUrl: z.string().url().optional(),
+});
+
+// This type represents a potential error response from the n8n workflow
+const N8NErrorResponseSchema = z.object({
+  error: z.boolean(),
+  message: z.string(),
+  sessionId: z.string().nullable().optional(),
+  callbackUrl: z.string().url().nullable().optional(),
+});
 
 export async function generateItinerary(
   data: z.infer<typeof actionSchema>
-): Promise<{ success: true; sessionId: string } | { success: false; error: string }> {
+): Promise<{ success: true; itinerary: Itinerary } | { success: false; error: string }> {
 
   try {
     const validatedData = actionSchema.parse(data);
@@ -45,12 +55,12 @@ export async function generateItinerary(
     
     const sessionId = uuidv4();
     const appUrl = getAppUrl();
+    // This callback is now used by n8n to trace requests but is not polled by the frontend.
     const callbackUrl = `${appUrl}/api/webhook?sessionId=${sessionId}`;
 
     console.log(`Starting n8n workflow. Session ID: ${sessionId}`);
 
-    // We do not await this response, we just fire and forget
-    fetch(n8nWebhookUrl, {
+    const response = await fetch(n8nWebhookUrl, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -58,27 +68,38 @@ export async function generateItinerary(
       body: JSON.stringify({ ...validatedData, callbackUrl, sessionId }),
     });
 
-    return { success: true, sessionId };
+    if (!response.ok) {
+        // Handle non-2xx HTTP responses
+        const errorBody = await response.text();
+        console.error(`n8n workflow failed with status ${response.status}:`, errorBody);
+        return { success: false, error: `The itinerary service returned an error (Status: ${response.status}).` };
+    }
+
+    const responseData = await response.json();
+    
+    // The incoming body from n8n might be an array, so we handle that
+    const payload = Array.isArray(responseData) ? responseData[0] : responseData;
+
+    // Check if the workflow returned a structured error
+    const errorCheck = N8NErrorResponseSchema.safeParse(payload);
+    if (errorCheck.success && errorCheck.data.error) {
+        console.error('n8n workflow returned a business logic error:', errorCheck.data.message);
+        return { success: false, error: errorCheck.data.message };
+    }
+    
+    // Validate the successful response structure
+    const result = N8NSuccessResponseSchema.safeParse(payload);
+
+    if (!result.success) {
+      console.error("Invalid itinerary structure received from n8n:", result.error.flatten());
+      return { success: false, error: "The itinerary service returned an unexpected data format." };
+    }
+
+    return { success: true, itinerary: result.data.itinerary };
 
   } catch (error) {
     console.error('Error in generateItinerary action:', error);
-    const errorMessage = error instanceof Error ? error.message : 'An unexpected error occurred.';
+    const errorMessage = error instanceof Error ? error.message : 'An unexpected error occurred while generating the itinerary.';
     return { success: false, error: errorMessage };
   }
-}
-
-export async function pollForResult(sessionId: string): Promise<PollResult> {
-  const appUrl = getAppUrl();
-  const pollUrl = `${appUrl}/api/webhook?sessionId=${sessionId}`;
-  
-  const response = await fetch(pollUrl, {
-    method: 'GET',
-    cache: 'no-store', // Ensure we aren't getting a cached response
-  });
-
-  if (!response.ok) {
-    throw new Error(`Polling failed with status ${response.status}`);
-  }
-
-  return await response.json();
 }
