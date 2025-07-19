@@ -94,25 +94,20 @@ export const ActivitySchema = z.object({
   notes: z.string().optional(),
 });
 
-const DayTemplateSchema = z.object({
-    startOfDay: ActivitySchema.nullable().optional(),
+const DayBreakdownSchema = z.object({
     breakfast: ActivitySchema.nullable().optional(),
     morningActivities: z.array(ActivitySchema).optional(),
     lunch: ActivitySchema.nullable().optional(),
-    middayActivities: z.array(ActivitySchema).optional(),
+    afternoonActivities: z.array(ActivitySchema).optional(),
     dinner: ActivitySchema.nullable().optional(),
-    eveningActivities: z.array(ActivitySchema).optional(),
     nightlifeActivities: z.array(ActivitySchema).optional(),
-    endOfDay: ActivitySchema.nullable().optional(),
 });
 
 export const ItineraryDaySchema = z.object({
   day: z.number().describe("The day number of the itinerary, starting from 1."),
   date: z.string().describe("The date for this day's activities."),
-  // The flat list is optional, as the primary source of truth is the template.
   activities: z.array(ActivitySchema).optional().describe("A flat list of all activities for the day."),
-  // The template is now the primary, but optional, way to structure a day's activities.
-  template: DayTemplateSchema.optional().describe("The structured breakdown of activities for the day."),
+  breakdown: DayBreakdownSchema.optional().describe("The structured breakdown of activities for the day."),
 });
 
 export const AccommodationSchema = z.object({

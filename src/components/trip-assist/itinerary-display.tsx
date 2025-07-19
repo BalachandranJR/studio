@@ -292,23 +292,17 @@ export function ItineraryDisplay({ itinerary, preferences, onRestart }: Itinerar
                     <CardContent>
                     <Accordion type="multiple" value={openDays} onValueChange={setOpenDays} className="w-full">
                     {allDays.map(({ dayNumber, date, data: day }) => {
-                       // Robust check for activities, preferring the structured template but falling back to the flat list.
-                       const dayTemplate = day?.template;
+                       // Robust check for activities, preferring the structured breakdown but falling back to the flat list.
+                       const dayBreakdown = day?.breakdown;
                        const flatActivities = day?.activities || [];
-                       const eveningActivities = [
-                          ...(dayTemplate?.eveningActivities || []),
-                          ...(dayTemplate?.nightlifeActivities || []),
-                       ].filter(Boolean);
-
-                       const hasContent = dayTemplate ? (
-                          dayTemplate.startOfDay ||
-                          dayTemplate.breakfast ||
-                          (dayTemplate.morningActivities && dayTemplate.morningActivities.length > 0) ||
-                          dayTemplate.lunch ||
-                          (dayTemplate.middayActivities && dayTemplate.middayActivities.length > 0) ||
-                          dayTemplate.dinner ||
-                          eveningActivities.length > 0 ||
-                          dayTemplate.endOfDay
+                       
+                       const hasContent = dayBreakdown ? (
+                          dayBreakdown.breakfast ||
+                          (dayBreakdown.morningActivities && dayBreakdown.morningActivities.length > 0) ||
+                          dayBreakdown.lunch ||
+                          (dayBreakdown.afternoonActivities && dayBreakdown.afternoonActivities.length > 0) ||
+                          dayBreakdown.dinner ||
+                          (dayBreakdown.nightlifeActivities && dayBreakdown.nightlifeActivities.length > 0)
                        ) : flatActivities.length > 0;
 
                        return (
@@ -318,16 +312,14 @@ export function ItineraryDisplay({ itinerary, preferences, onRestart }: Itinerar
                         </AccordionTrigger>
                         <AccordionContent>
                            {hasContent ? (
-                                dayTemplate ? (
+                                dayBreakdown ? (
                                   <div className="divide-y">
-                                    <DaySection title="Start of Day" activities={[dayTemplate.startOfDay]} />
-                                    <DaySection title="Morning" activities={[dayTemplate.breakfast, ...(dayTemplate.morningActivities || [])]} />
-                                    <DaySection title="Midday" activities={[dayTemplate.lunch, ...(dayTemplate.middayActivities || [])]} />
-                                    <DaySection title="Evening" activities={[dayTemplate.dinner, ...eveningActivities]} />
-                                    <DaySection title="End of Day" activities={[dayTemplate.endOfDay]} />
+                                    <DaySection title="Morning" activities={[dayBreakdown.breakfast, ...(dayBreakdown.morningActivities || [])]} />
+                                    <DaySection title="Midday" activities={[dayBreakdown.lunch, ...(dayBreakdown.afternoonActivities || [])]} />
+                                    <DaySection title="Evening" activities={[dayBreakdown.dinner, ...(dayBreakdown.nightlifeActivities || [])]} />
                                   </div>
                                 ) : (
-                                  // Fallback to render the flat list if template is missing
+                                  // Fallback to render the flat list if breakdown is missing
                                   <div className="space-y-4 py-4 pl-4 border-l-2 border-primary/50 ml-2">
                                       {flatActivities.map((activity, index) => (
                                           <ActivityCard key={index} activity={activity} />
