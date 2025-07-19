@@ -251,13 +251,13 @@ function sortActivities(activities: Activity[] = []): Activity[] {
   return [...activities].sort((a, b) => parseTimeToMinutes(a.time) - parseTimeToMinutes(b.time));
 }
 
-// **THE FIX**: This function robustly parses a date string, trying multiple formats.
+// This function robustly parses a date string, trying multiple formats.
 function parseDate(dateStr: string): Date | null {
   if (!dateStr) return null;
   // Try parsing YYYY-MM-DD first (most reliable)
   let date = parse(dateStr, 'yyyy-MM-dd', new Date());
   if (isValid(date)) return date;
-  // Fallback to JS Date constructor for other formats like 'Jul 19, 2025'
+  // Fallback to JS Date constructor for other formats like 'Jul 19, 2025' or ISO strings
   date = new Date(dateStr);
   if (isValid(date)) return date;
   return null;
@@ -276,14 +276,14 @@ export function ItineraryDisplay({ itinerary, preferences, onRestart }: Itinerar
     }, 100);
   };
 
-  const startDate = parseDate(itinerary.startDate);
-  const endDate = parseDate(itinerary.endDate);
+  // Use the original preference dates as the source of truth
+  const startDate = preferences.dates.from;
+  const endDate = preferences.dates.to;
 
-  // **THE FIX**: If dates are invalid, don't render. This prevents crashes.
   if (!startDate || !endDate) {
-    return <Card><CardHeader><CardTitle>Error</CardTitle><CardDescription>Invalid date format received in the itinerary.</CardDescription></CardHeader></Card>
+    return <Card><CardHeader><CardTitle>Error</CardTitle><CardDescription>Invalid date format in travel preferences.</CardDescription></CardHeader></Card>
   }
-
+  
   const totalDays = differenceInDays(endDate, startDate) + 1;
 
   const allDays = Array.from({ length: totalDays }, (_, i) => {
@@ -340,16 +340,17 @@ export function ItineraryDisplay({ itinerary, preferences, onRestart }: Itinerar
                     <CardContent>
                     <Accordion type="multiple" value={openDays} onValueChange={setOpenDays} className="w-full">
                     {allDays.map(({ dayNumber, date, data: day }) => {
-                       // **THE FIX**: This logic is now much more robust to handle different data structures from n8n.
-                       const b = day?.breakdown;
+                       // This logic is now much more robust to handle different data structures from n8n.
+                       const b = day?.breakdown ?? day?.template; // Use 'breakdown' or 'template'
+                       
                        const morningMeal = b?.breakfast ?? b?.morning?.meal;
                        const morningActivities = b?.morningActivities ?? b?.morning?.activities;
                        
                        const afternoonMeal = b?.lunch ?? b?.afternoon?.meal;
-                       const afternoonActivities = b?.afternoonActivities ?? b?.afternoon?.activities;
+                       const afternoonActivities = b?.afternoonActivities ?? b?.afternoon?.activities ?? b?.middayActivities;
                        
-                       const nightMeal = b?.dinner ?? b?.night?.meal ?? b?.nightlife; // Allow nightlife to be treated as a meal if it's the only night event
-                       const nightActivities = b?.nightActivities ?? b?.night?.activities;
+                       const nightMeal = b?.dinner ?? b?.night?.meal;
+                       const nightActivities = b?.nightlife ?? b?.nightlifeActivities ?? b?.night?.activities;
 
                        const hasContent = morningMeal || afternoonMeal || nightMeal ||
                                           (morningActivities && morningActivities.length > 0) ||
