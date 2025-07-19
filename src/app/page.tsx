@@ -18,7 +18,18 @@ import { Button } from "@/components/ui/button";
 const POLLING_INTERVAL_MS = 3000;
 const POLLING_TIMEOUT_MS = 120000; // 2 minutes
 
-async function pollForResult(sessionId: string): Promise<{itinerary?: Itinerary, error?: string, status?: string}> {
+// The result from the webhook is now typed to reflect the actual nested structure
+type PollResult = {
+    itinerary?: Itinerary;
+    error?: string;
+    status?: string;
+} | {
+    // This handles the case where the n8n workflow returns an array
+    itinerary: Itinerary
+}[];
+
+
+async function pollForResult(sessionId: string): Promise<PollResult> {
     const response = await fetch(`/api/webhook?sessionId=${sessionId}`);
     if (!response.ok) {
         throw new Error(`Polling failed with status ${response.status}`);
@@ -112,13 +123,19 @@ export default function Home() {
         try {
             const result = await pollForResult(sid);
 
-            if (result.itinerary) {
+            // **THE CRITICAL FIX IS HERE**
+            // Check if the result is the array from n8n and extract the itinerary object
+            const itineraryData = Array.isArray(result) ? result[0]?.itinerary : result?.itinerary;
+            const errorData = (result as { error?: string })?.error;
+
+
+            if (itineraryData) {
                 cleanupPolling();
-                setItinerary(result.itinerary);
+                setItinerary(itineraryData);
                 setAppState('result');
-            } else if (result.error) {
+            } else if (errorData) {
                 cleanupPolling();
-                setError(result.error);
+                setError(errorData);
                 setAppState('error');
             } else {
                 pollingIntervalRef.current = setTimeout(poll, POLLING_INTERVAL_MS);

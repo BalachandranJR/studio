@@ -204,11 +204,9 @@ const CostBreakdown = ({ costBreakdown }: { costBreakdown?: Itinerary['costBreak
 
 function parseDate(dateStr: string): Date | null {
   if (!dateStr) return null;
-  // First, try to parse formats like "Jul 19, 2025" or "2025-07-19T00:00:00.000Z"
   let date = new Date(dateStr);
   if (isValid(date)) return date;
 
-  // Then try "YYYY-MM-DD"
   date = parse(dateStr, 'yyyy-MM-dd', new Date());
   if (isValid(date)) return date;
   
@@ -245,6 +243,7 @@ export function ItineraryDisplay({ itinerary, preferences, onRestart }: Itinerar
       
       const itineraryDay = itinerary.days.find(d => {
           if (!d.date) return false;
+          // The date from the API can be "July 19, 2025" etc. We need to parse it correctly.
           const dayDate = parseDate(d.date);
           return dayDate ? format(dayDate, 'yyyy-MM-dd') === currentDateStr : false;
       });
@@ -292,7 +291,6 @@ export function ItineraryDisplay({ itinerary, preferences, onRestart }: Itinerar
                     <CardContent>
                     <Accordion type="multiple" value={openDays} onValueChange={setOpenDays} className="w-full">
                     {allDays.map(({ dayNumber, date, data: day }) => {
-                       // Robust check for activities, preferring the structured breakdown but falling back to the flat list.
                        const dayBreakdown = day?.breakdown;
                        const flatActivities = day?.activities || [];
                        
@@ -315,11 +313,10 @@ export function ItineraryDisplay({ itinerary, preferences, onRestart }: Itinerar
                                 dayBreakdown ? (
                                   <div className="divide-y">
                                     <DaySection title="Morning" activities={[dayBreakdown.breakfast, ...(dayBreakdown.morningActivities || [])]} />
-                                    <DaySection title="Midday" activities={[dayBreakdown.lunch, ...(dayBreakdown.afternoonActivities || [])]} />
+                                    <DaySection title="Afternoon" activities={[dayBreakdown.lunch, ...(dayBreakdown.afternoonActivities || [])]} />
                                     <DaySection title="Evening" activities={[dayBreakdown.dinner, ...(dayBreakdown.nightlifeActivities || [])]} />
                                   </div>
                                 ) : (
-                                  // Fallback to render the flat list if breakdown is missing
                                   <div className="space-y-4 py-4 pl-4 border-l-2 border-primary/50 ml-2">
                                       {flatActivities.map((activity, index) => (
                                           <ActivityCard key={index} activity={activity} />
