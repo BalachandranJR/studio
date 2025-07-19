@@ -47,12 +47,10 @@ export async function generateItinerary(
       headers: {
         'Content-Type': 'application/json',
       },
-      // The body now only contains the user preferences
       body: JSON.stringify(validatedData),
     });
 
     if (!response.ok) {
-        // Handle non-2xx HTTP responses
         const errorBody = await response.text();
         console.error(`n8n workflow failed with status ${response.status}:`, errorBody);
         return { success: false, error: `The itinerary service returned an error (Status: ${response.status}).` };
@@ -60,24 +58,26 @@ export async function generateItinerary(
 
     const responseData = await response.json();
     
-    // The incoming body from n8n might be an array, so we handle that
-    // And it is nested inside a `json` property.
-    const payload = (Array.isArray(responseData) ? responseData[0] : responseData)?.json;
+    // The incoming body from n8n might be an array due to a Merge node.
+    // We need to find the object that contains the itinerary.
+    const rawPayload = Array.isArray(responseData) 
+        ? responseData.find(item => item.json?.itinerary)?.json 
+        : responseData?.json;
 
-    if (!payload) {
-        console.error("Invalid response structure from n8n: no 'json' property found.", responseData);
+    if (!rawPayload) {
+        console.error("Invalid response structure from n8n: could not find a payload with an 'itinerary' property.", responseData);
         return { success: false, error: "The itinerary service returned an invalid response structure." };
     }
 
     // Check if the workflow returned a structured error
-    const errorCheck = N8NErrorResponseSchema.safeParse(payload);
+    const errorCheck = N8NErrorResponseSchema.safeParse(rawPayload);
     if (errorCheck.success && errorCheck.data.error) {
         console.error('n8n workflow returned a business logic error:', errorCheck.data.message);
         return { success: false, error: errorCheck.data.message };
     }
     
     // Validate the successful response structure
-    const result = N8NSuccessResponseSchema.safeParse(payload);
+    const result = N8NSuccessResponseSchema.safeParse(rawPayload);
 
     if (!result.success) {
       console.error("Invalid itinerary structure received from n8n:", result.error.flatten());
