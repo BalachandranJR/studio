@@ -204,7 +204,7 @@ const CostBreakdown = ({ costBreakdown }: { costBreakdown?: Itinerary['costBreak
 
 function parseDate(dateStr: string): Date | null {
   if (!dateStr) return null;
-  // First, try to parse formats like "Jul 19, 2025" or "July 19, 2025"
+  // First, try to parse formats like "Jul 19, 2025" or "2025-07-19T00:00:00.000Z"
   let date = new Date(dateStr);
   if (isValid(date)) return date;
 
@@ -406,3 +406,5 @@ export function ItinerarySkeleton() {
     </Card>
   );
 }
+
+    
