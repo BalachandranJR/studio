@@ -98,10 +98,10 @@ const DayTemplateSchema = z.object({
     startOfDay: ActivitySchema.nullable().optional(),
     breakfast: ActivitySchema.nullable().optional(),
     morningActivities: z.array(ActivitySchema).optional(),
-    middayActivities: z.array(ActivitySchema).optional(),
     lunch: ActivitySchema.nullable().optional(),
-    eveningActivities: z.array(ActivitySchema).optional(),
+    middayActivities: z.array(ActivitySchema).optional(),
     dinner: ActivitySchema.nullable().optional(),
+    eveningActivities: z.array(ActivitySchema).optional(),
     nightlifeActivities: z.array(ActivitySchema).optional(),
     endOfDay: ActivitySchema.nullable().optional(),
 });
@@ -145,5 +145,3 @@ export const ItinerarySchema = z.object({
 export type Activity = z.infer<typeof ActivitySchema>;
 export type ItineraryDay = z.infer<typeof ItineraryDaySchema>;
 export type Itinerary = z.infer<typeof ItinerarySchema>;
-
-    
