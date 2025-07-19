@@ -15,6 +15,9 @@ import { TravelPreferenceForm } from "@/components/trip-assist/travel-preference
 import type { Itinerary, TravelPreference } from "@/lib/types";
 import { Button } from "@/components/ui/button";
 
+const POLLING_INTERVAL_MS = 3000;
+const POLLING_TIMEOUT_MS = 120000; // 2 minutes
+
 async function pollForResult(sessionId: string): Promise<{itinerary?: Itinerary, error?: string, status?: string}> {
     const response = await fetch(`/api/webhook?sessionId=${sessionId}`);
     if (!response.ok) {
@@ -88,7 +91,7 @@ export default function Home() {
 
   const cleanupPolling = useCallback(() => {
     if (pollingIntervalRef.current) {
-      clearInterval(pollingIntervalRef.current);
+      clearTimeout(pollingIntervalRef.current);
       pollingIntervalRef.current = null;
     }
   }, []);
@@ -96,18 +99,15 @@ export default function Home() {
   const startPolling = useCallback((sid: string) => {
     cleanupPolling();
     
-    let attempts = 0;
-    const maxAttempts = 100; // Poll for 5 minutes
+    const startTime = Date.now();
 
     const poll = async () => {
-        if (attempts >= maxAttempts) {
+        if (Date.now() - startTime > POLLING_TIMEOUT_MS) {
             cleanupPolling();
-            setError("The request timed out. The generation service might be busy or failed to respond. Please try again later.");
+            setError("The request timed out. The itinerary generation service might be busy or failed to respond. Please try again later.");
             setAppState('error');
             return;
         }
-        
-        attempts++;
 
         try {
             const result = await pollForResult(sid);
@@ -121,19 +121,17 @@ export default function Home() {
                 setError(result.error);
                 setAppState('error');
             } else {
-                // If there's no result yet, continue polling
-                pollingIntervalRef.current = setTimeout(poll, 3000);
+                pollingIntervalRef.current = setTimeout(poll, POLLING_INTERVAL_MS);
             }
         } catch (err) {
             cleanupPolling();
-            const errorMessage = err instanceof Error ? err.message : "An unknown error occurred during polling.";
+            const errorMessage = err instanceof Error ? err.message : "An unknown error occurred while checking for your itinerary.";
             setError(errorMessage);
             setAppState('error');
         }
     };
     
-    // Start the first poll
-    pollingIntervalRef.current = setTimeout(poll, 3000);
+    pollingIntervalRef.current = setTimeout(poll, POLLING_INTERVAL_MS);
 
   }, [cleanupPolling]);
 
@@ -151,8 +149,6 @@ export default function Home() {
     setItinerary(null);
     setSessionId(null);
     
-    // **THE FIX**: Convert dates to 'YYYY-MM-DD' strings before processing.
-    // This removes all timezone ambiguity.
     const processedData = {
       ...data,
       dates: {
@@ -161,10 +157,8 @@ export default function Home() {
       },
     };
     
-    // We store the original form data (with Date objects) for the summary display
     setSubmittedPreferences(data);
     
-    // We send the timezone-free string data to the backend action
     const result = await generateItinerary(processedData);
 
     if (result.success) {
@@ -182,7 +176,7 @@ export default function Home() {
     setError(null);
     setSessionId(null);
     setSubmittedPreferences(null);
-    setAppState('form'); // Go back to form, not initial screen
+    setAppState('form');
     cleanupPolling();
   };
   
