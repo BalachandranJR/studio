@@ -1,27 +1,16 @@
 
+import { kv } from '@/lib/kv';
+import { Itinerary, ItinerarySchema } from '@/lib/types';
 import { NextRequest, NextResponse } from 'next/server';
-import { ItinerarySchema, Itinerary } from '@/lib/types';
 import { z } from 'zod';
 import { unstable_noStore as noStore } from 'next/cache';
 
-// This is a more robust way to handle in-memory cache in a serverless environment like Vercel/Next.js.
-// It attaches the cache to the global object, which can persist between "warm" function invocations.
-const globalForCache = globalThis as unknown as {
-  resultCache: Map<string, { itinerary?: Itinerary; error?: string }> | undefined;
-};
+const CACHE_TTL_SECONDS = 5 * 60; // 5 minutes in seconds
 
-const resultStore = globalForCache.resultCache ?? new Map<string, { itinerary?: Itinerary; error?: string }>();
-if (process.env.NODE_ENV !== 'production') globalForCache.resultCache = resultStore;
-
-
-const CACHE_TTL = 5 * 60 * 1000; // 5 minutes
-
-
-// Ensure this endpoint is not cached by default and is treated as dynamic.
 export const dynamic = 'force-dynamic';
 
 export async function POST(request: NextRequest) {
-  noStore(); // Opt out of caching for this function
+  noStore();
   const searchParams = request.nextUrl.searchParams;
   const sessionId = searchParams.get('sessionId');
 
@@ -39,31 +28,25 @@ export async function POST(request: NextRequest) {
     let dataToCache: { itinerary?: Itinerary; error?: string };
 
     if (body.error) {
-       console.error(`[Webhook] n8n workflow returned an error for session ${sessionId}:`, body.error);
-       const errorMessage = typeof body.error === 'object' ? JSON.stringify(body.error) : body.error;
-       dataToCache = { error: `An error occurred in the n8n workflow: ${errorMessage}` };
+      console.error(`[Webhook] n8n workflow returned an error for session ${sessionId}:`, body.error);
+      const errorMessage = typeof body.error === 'object' ? JSON.stringify(body.error) : body.error;
+      dataToCache = { error: `An error occurred in the n8n workflow: ${errorMessage}` };
     } else {
-        // The itinerary is now nested inside an 'itinerary' object in the payload
-        const itineraryData = body.itinerary;
-        if (!itineraryData) {
-            throw new Error("Payload from n8n is missing the 'itinerary' object.");
-        }
-        
-        const validatedItinerary = ItinerarySchema.parse(itineraryData);
-        dataToCache = { itinerary: validatedItinerary };
-        console.log(`[Webhook] Successfully validated itinerary for sessionId: ${sessionId}, storing in cache.`);
+      const itineraryData = body.itinerary;
+      if (!itineraryData) {
+        throw new Error("Payload from n8n is missing the 'itinerary' object.");
+      }
+      
+      const validatedItinerary = ItinerarySchema.parse(itineraryData);
+      dataToCache = { itinerary: validatedItinerary };
+      console.log(`[Webhook] Successfully validated itinerary for sessionId: ${sessionId}, storing in cache.`);
     }
 
-    resultStore.set(sessionId, dataToCache);
+    // Use Vercel KV to store the result with a Time-To-Live (TTL)
+    await kv.set(sessionId, JSON.stringify(dataToCache), { ex: CACHE_TTL_SECONDS });
     
-    // Clean up cache entry after TTL
-    setTimeout(() => {
-        resultStore.delete(sessionId);
-        console.log(`[Webhook] Cleared cache for expired sessionId: ${sessionId}`);
-    }, CACHE_TTL);
-
-
     return NextResponse.json({ success: true, message: "Data received and processed." });
+
   } catch (error) {
     console.error(`[Webhook] Processing error for session ${sessionId}:`, error);
     
@@ -75,14 +58,15 @@ export async function POST(request: NextRequest) {
       errorMessage = error.message;
     }
     
-    resultStore.set(sessionId, { error: errorMessage });
+    // Store the error in KV so the frontend can retrieve it
+    await kv.set(sessionId, JSON.stringify({ error: errorMessage }), { ex: CACHE_TTL_SECONDS });
 
     return NextResponse.json({ success: false, error: 'Failed to process webhook data' }, { status: 500 });
   }
 }
 
 export async function GET(request: NextRequest) {
-  noStore(); // Opt out of caching for this function
+  noStore();
   const { searchParams } = new URL(request.url);
   const sessionId = searchParams.get('sessionId');
   
@@ -92,7 +76,8 @@ export async function GET(request: NextRequest) {
 
   console.log(`[Webhook] Received GET (poll) for sessionId: ${sessionId}`);
 
-  const result = resultStore.get(sessionId);
+  // Retrieve the result from Vercel KV
+  const result = await kv.get<{ itinerary?: Itinerary; error?: string }>(sessionId);
 
   if (result) {
     console.log(`[Webhook] Found result in cache for ${sessionId}, returning it.`);
