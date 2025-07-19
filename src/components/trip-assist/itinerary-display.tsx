@@ -406,3 +406,5 @@ export function ItinerarySkeleton() {
     </Card>
   );
 }
+
+    
