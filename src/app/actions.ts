@@ -17,12 +17,22 @@ function getAppUrl() {
   return appUrl.startsWith('http') ? appUrl : `https://${appUrl}`;
 }
 
+
+// **THE FIX**: This action now expects dates as simple 'YYYY-MM-DD' strings.
+// We define a modified schema for validation.
+const actionSchema = travelPreferenceSchema.extend({
+  dates: z.object({
+    from: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "Invalid start date format"),
+    to: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "Invalid end date format"),
+  })
+});
+
 export async function generateItinerary(
-  data: TravelPreference
+  data: z.infer<typeof actionSchema>
 ): Promise<{ success: true; sessionId: string } | { success: false; error: string }> {
 
   try {
-    const validatedData = travelPreferenceSchema.parse(data);
+    const validatedData = actionSchema.parse(data);
 
     const sessionId = uuidv4();
     const n8nWebhookUrl = process.env.N8N_WEBHOOK_URL;

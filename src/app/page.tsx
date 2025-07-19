@@ -2,10 +2,10 @@
 "use client";
 
 import { useEffect, useState, useCallback, useRef } from "react";
-import { PlaneTakeoff, Loader2, Send } from "lucide-react";
+import { PlaneTakeoff, Loader2 } from "lucide-react";
 import useEmblaCarousel from 'embla-carousel-react';
 import Autoplay from 'embla-carousel-autoplay';
-import Image from 'next/image';
+import { format } from "date-fns";
 
 import { generateItinerary } from "@/app/actions";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
@@ -150,9 +150,22 @@ export default function Home() {
     setError(null);
     setItinerary(null);
     setSessionId(null);
+    
+    // **THE FIX**: Convert dates to 'YYYY-MM-DD' strings before processing.
+    // This removes all timezone ambiguity.
+    const processedData = {
+      ...data,
+      dates: {
+        from: format(data.dates.from, 'yyyy-MM-dd'),
+        to: format(data.dates.to, 'yyyy-MM-dd'),
+      },
+    };
+    
+    // We store the original form data (with Date objects) for the summary display
     setSubmittedPreferences(data);
     
-    const result = await generateItinerary(data);
+    // We send the timezone-free string data to the backend action
+    const result = await generateItinerary(processedData);
 
     if (result.success) {
       setSessionId(result.sessionId);

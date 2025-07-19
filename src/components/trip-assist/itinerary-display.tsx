@@ -2,7 +2,7 @@
 "use client";
 
 import { useState } from "react";
-import { format, parseISO, addDays, differenceInDays } from "date-fns";
+import { format, parse, addDays, differenceInDays, isValid } from "date-fns";
 import { Download, RotateCcw, Calendar as CalendarIcon, Clock, MapPin, DollarSign, Bus, Users, Utensils, Sparkles, Wallet, Plane, Home, CreditCard, Sun, Sunset, Moon, Info } from "lucide-react";
 
 import { ItineraryIcon } from "@/components/icons";
@@ -251,6 +251,19 @@ function sortActivities(activities: Activity[] = []): Activity[] {
   return [...activities].sort((a, b) => parseTimeToMinutes(a.time) - parseTimeToMinutes(b.time));
 }
 
+// **THE FIX**: This function robustly parses a date string, trying multiple formats.
+function parseDate(dateStr: string): Date | null {
+  if (!dateStr) return null;
+  // Try parsing YYYY-MM-DD first (most reliable)
+  let date = parse(dateStr, 'yyyy-MM-dd', new Date());
+  if (isValid(date)) return date;
+  // Fallback to JS Date constructor for other formats like 'Jul 19, 2025'
+  date = new Date(dateStr);
+  if (isValid(date)) return date;
+  return null;
+}
+
+
 export function ItineraryDisplay({ itinerary, preferences, onRestart }: ItineraryDisplayProps) {
   const [openDays, setOpenDays] = useState<string[]>(['day-1']);
   
@@ -263,29 +276,27 @@ export function ItineraryDisplay({ itinerary, preferences, onRestart }: Itinerar
     }, 100);
   };
 
-  const startDate = parseISO(itinerary.startDate);
-  const endDate = parseISO(itinerary.endDate);
+  const startDate = parseDate(itinerary.startDate);
+  const endDate = parseDate(itinerary.endDate);
+
+  // **THE FIX**: If dates are invalid, don't render. This prevents crashes.
+  if (!startDate || !endDate) {
+    return <Card><CardHeader><CardTitle>Error</CardTitle><CardDescription>Invalid date format received in the itinerary.</CardDescription></CardHeader></Card>
+  }
+
   const totalDays = differenceInDays(endDate, startDate) + 1;
+
   const allDays = Array.from({ length: totalDays }, (_, i) => {
       const currentDate = addDays(startDate, i);
       const currentDateStr = format(currentDate, 'yyyy-MM-dd');
-      // Find the corresponding day from the itinerary data
+      
+      // Find the corresponding day from the itinerary data by matching the date string
       const itineraryDay = itinerary.days.find(d => {
           if (!d.date) return false;
-          try {
-              // Normalize the date from itinerary data to compare
-              const itineraryDate = parseISO(d.date);
-              return format(itineraryDate, 'yyyy-MM-dd') === currentDateStr;
-          } catch (e) {
-              // Also check for non-standard date formats like "Jul 18, 2025"
-              try {
-                const parsedDate = new Date(d.date);
-                return format(parsedDate, 'yyyy-MM-dd') === currentDateStr;
-              } catch (e2) {
-                return false;
-              }
-          }
+          const dayDate = parseDate(d.date);
+          return dayDate ? format(dayDate, 'yyyy-MM-dd') === currentDateStr : false;
       });
+
       return {
           dayNumber: i + 1,
           date: format(currentDate, "MMM d, yyyy"),
@@ -305,8 +316,8 @@ export function ItineraryDisplay({ itinerary, preferences, onRestart }: Itinerar
                 <CardDescription className="flex items-center justify-center gap-2 pt-2">
                 <CalendarIcon className="h-4 w-4" />
                 <span>
-                    {format(parseISO(itinerary.startDate), "MMM d, yyyy")} - {" "}
-                    {format(parseISO(itinerary.endDate), "MMM d, yyyy")}
+                    {format(startDate, "MMM d, yyyy")} - {" "}
+                    {format(endDate, "MMM d, yyyy")}
                 </span>
                 </CardDescription>
             </CardHeader>
@@ -329,6 +340,7 @@ export function ItineraryDisplay({ itinerary, preferences, onRestart }: Itinerar
                     <CardContent>
                     <Accordion type="multiple" value={openDays} onValueChange={setOpenDays} className="w-full">
                     {allDays.map(({ dayNumber, date, data: day }) => {
+                       // **THE FIX**: This logic is now much more robust to handle different data structures from n8n.
                        const b = day?.breakdown;
                        const morningMeal = b?.breakfast ?? b?.morning?.meal;
                        const morningActivities = b?.morningActivities ?? b?.morning?.activities;
@@ -336,7 +348,7 @@ export function ItineraryDisplay({ itinerary, preferences, onRestart }: Itinerar
                        const afternoonMeal = b?.lunch ?? b?.afternoon?.meal;
                        const afternoonActivities = b?.afternoonActivities ?? b?.afternoon?.activities;
                        
-                       const nightMeal = b?.dinner ?? b?.night?.meal;
+                       const nightMeal = b?.dinner ?? b?.night?.meal ?? b?.nightlife; // Allow nightlife to be treated as a meal if it's the only night event
                        const nightActivities = b?.nightActivities ?? b?.night?.activities;
 
                        const hasContent = morningMeal || afternoonMeal || nightMeal ||
@@ -373,7 +385,7 @@ export function ItineraryDisplay({ itinerary, preferences, onRestart }: Itinerar
                                       activities={nightActivities}
                                     />
                                   </div>
-                                ) : ( // Fallback to flat activities list
+                                ) : ( // Fallback to flat activities list if breakdown is missing
                                    <div className="space-y-4 pl-4 border-l-2 border-primary/50 ml-2">
                                     {sortActivities(day?.activities).map((activity, activityIndex) => (
                                         <ActivityCard key={activityIndex} activity={activity} />
@@ -392,8 +404,9 @@ export function ItineraryDisplay({ itinerary, preferences, onRestart }: Itinerar
                 </Card>
             </div>
         </div>
-
-        <CardFooter className="flex-col md:flex-row gap-2 items-center justify-center no-print border-t pt-6">
+      </div>
+      <div className="no-print pt-6">
+        <CardFooter className="flex-col md:flex-row gap-2 items-center justify-center border-t pt-6">
             <Button variant="outline" onClick={onRestart}>
               <RotateCcw className="mr-2 h-4 w-4" />
               Start New Plan
@@ -412,18 +425,50 @@ export function ItinerarySkeleton() {
   return (
     <Card className="w-full">
       <CardHeader>
-        <Skeleton className="h-5 w-32 rounded-full" />
-        <Skeleton className="h-9 w-3/4 mt-2 rounded-md" />
-        <Skeleton className="h-5 w-1/2 mt-2 rounded-md" />
+        <Skeleton className="h-5 w-32 rounded-full mx-auto" />
+        <Skeleton className="h-9 w-3/4 mt-2 rounded-md mx-auto" />
+        <Skeleton className="h-5 w-1/2 mt-2 rounded-md mx-auto" />
       </CardHeader>
-      <CardContent className="space-y-4">
-        {[1, 2, 3].map((i) => (
-          <div key={i} className="border rounded-md p-4">
-            <Skeleton className="h-6 w-1/3" />
+      <CardContent className="space-y-6">
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+          <div className="lg:col-span-1 space-y-8">
+            <Card>
+              <CardHeader>
+                <Skeleton className="h-6 w-1/2" />
+                <Skeleton className="h-4 w-3/4" />
+              </CardHeader>
+              <CardContent>
+                <Skeleton className="h-24 w-full" />
+              </CardContent>
+            </Card>
+            <Card>
+              <CardHeader>
+                <Skeleton className="h-6 w-1/2" />
+                <Skeleton className="h-4 w-3/4" />
+              </CardHeader>
+              <CardContent>
+                <Skeleton className="h-24 w-full" />
+              </CardContent>
+            </Card>
           </div>
-        ))}
+          <div className="lg:col-span-2">
+            <Card>
+              <CardHeader>
+                <Skeleton className="h-6 w-1/3" />
+              </CardHeader>
+              <CardContent className="space-y-4">
+                {[1, 2, 3].map((i) => (
+                  <div key={i} className="border rounded-md p-4">
+                    <Skeleton className="h-6 w-1/3" />
+                    <Skeleton className="h-16 w-full mt-2" />
+                  </div>
+                ))}
+              </CardContent>
+            </Card>
+          </div>
+        </div>
       </CardContent>
-      <CardFooter className="justify-end gap-2">
+      <CardFooter className="justify-center gap-2">
         <Skeleton className="h-10 w-36" />
         <Skeleton className="h-10 w-32" />
       </CardFooter>
