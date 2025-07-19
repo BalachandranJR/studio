@@ -204,9 +204,15 @@ const CostBreakdown = ({ costBreakdown }: { costBreakdown?: Itinerary['costBreak
 
 function parseDate(dateStr: string): Date | null {
   if (!dateStr) return null;
+  // Handle ISO 8601 format (e.g., "2025-07-19T00:00:00.000Z")
   let date = new Date(dateStr);
   if (isValid(date)) return date;
 
+  // Handle formatted string "July 19, 2025"
+  date = parse(dateStr, 'MMMM d, yyyy', new Date());
+  if (isValid(date)) return date;
+  
+  // Handle formatted string "yyyy-MM-dd"
   date = parse(dateStr, 'yyyy-MM-dd', new Date());
   if (isValid(date)) return date;
   
@@ -243,7 +249,6 @@ export function ItineraryDisplay({ itinerary, preferences, onRestart }: Itinerar
       
       const itineraryDay = itinerary.days.find(d => {
           if (!d.date) return false;
-          // The date from the API can be "July 19, 2025" etc. We need to parse it correctly.
           const dayDate = parseDate(d.date);
           return dayDate ? format(dayDate, 'yyyy-MM-dd') === currentDateStr : false;
       });
@@ -294,14 +299,14 @@ export function ItineraryDisplay({ itinerary, preferences, onRestart }: Itinerar
                        const dayBreakdown = day?.breakdown;
                        const flatActivities = day?.activities || [];
                        
-                       const hasContent = dayBreakdown ? (
+                       const hasContent = (dayBreakdown && (
                           dayBreakdown.breakfast ||
                           (dayBreakdown.morningActivities && dayBreakdown.morningActivities.length > 0) ||
                           dayBreakdown.lunch ||
                           (dayBreakdown.afternoonActivities && dayBreakdown.afternoonActivities.length > 0) ||
                           dayBreakdown.dinner ||
                           (dayBreakdown.nightlifeActivities && dayBreakdown.nightlifeActivities.length > 0)
-                       ) : flatActivities.length > 0;
+                       )) || flatActivities.length > 0;
 
                        return (
                         <AccordionItem value={`day-${dayNumber}`} key={dayNumber}>

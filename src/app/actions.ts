@@ -2,6 +2,7 @@
 'use server';
 
 import { z } from 'zod';
+import { v4 as uuidv4 } from 'uuid';
 
 import { ItinerarySchema, travelPreferenceSchema } from '@/lib/types';
 import type { Itinerary } from '@/lib/types';
@@ -22,17 +23,14 @@ const actionSchema = travelPreferenceSchema.extend({
   })
 });
 
-type PollResult = {
+export type PollResult = {
     itinerary?: Itinerary;
     error?: string;
-} | {
-    itinerary: Itinerary
-}[];
-
+};
 
 export async function generateItinerary(
   data: z.infer<typeof actionSchema>
-): Promise<{ success: true; itinerary: Itinerary } | { success: false; error: string }> {
+): Promise<{ success: true; sessionId: string } | { success: false; error: string }> {
 
   try {
     const validatedData = actionSchema.parse(data);
@@ -45,53 +43,42 @@ export async function generateItinerary(
       return { success: false, error: 'The application is not configured to connect to the itinerary generation service. Please contact support.' };
     }
     
-    console.log("Starting n8n workflow and awaiting response...");
+    const sessionId = uuidv4();
+    const appUrl = getAppUrl();
+    const callbackUrl = `${appUrl}/api/webhook?sessionId=${sessionId}`;
 
-    const response = await fetch(n8nWebhookUrl, {
+    console.log(`Starting n8n workflow. Session ID: ${sessionId}`);
+
+    // We do not await this response, we just fire and forget
+    fetch(n8nWebhookUrl, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
       },
-      // We no longer need a callbackUrl as we wait for the response directly
-      body: JSON.stringify(validatedData),
+      body: JSON.stringify({ ...validatedData, callbackUrl, sessionId }),
     });
 
-    if (!response.ok) {
-        const errorBody = await response.text();
-        const errorMessage = `n8n webhook call failed with status ${response.status}: ${errorBody}`;
-        console.error(errorMessage);
-        return { success: false, error: `There was a problem communicating with the itinerary generation service (status: ${response.status}).` };
-    }
-    
-    const result: PollResult = await response.json();
-    console.log("Successfully received response from n8n workflow.");
-
-    // The CRITICAL FIX IS HERE: Extract the itinerary from the array structure
-    const itineraryData = Array.isArray(result) ? result[0]?.itinerary : (result as any)?.itinerary;
-    const errorData = (result as { error?: string })?.error;
-
-    if (errorData) {
-        console.error(`n8n workflow returned an error:`, errorData);
-        return { success: false, error: `The itinerary generation service returned an error: ${errorData}` };
-    }
-
-    if (!itineraryData) {
-        console.error("No itinerary object found in the n8n response:", JSON.stringify(result, null, 2));
-        return { success: false, error: "The response from the itinerary service was incomplete." };
-    }
-
-    // Validate the final itinerary object
-    const validatedItinerary = ItinerarySchema.parse(itineraryData);
-    
-    return { success: true, itinerary: validatedItinerary };
+    return { success: true, sessionId };
 
   } catch (error) {
     console.error('Error in generateItinerary action:', error);
-    if (error instanceof z.ZodError) {
-        console.error("Zod validation error details:", error.flatten());
-        return { success: false, error: "The itinerary data from the workflow has an invalid format." };
-    }
     const errorMessage = error instanceof Error ? error.message : 'An unexpected error occurred.';
     return { success: false, error: errorMessage };
   }
+}
+
+export async function pollForResult(sessionId: string): Promise<PollResult> {
+  const appUrl = getAppUrl();
+  const pollUrl = `${appUrl}/api/webhook?sessionId=${sessionId}`;
+  
+  const response = await fetch(pollUrl, {
+    method: 'GET',
+    cache: 'no-store', // Ensure we aren't getting a cached response
+  });
+
+  if (!response.ok) {
+    throw new Error(`Polling failed with status ${response.status}`);
+  }
+
+  return await response.json();
 }
