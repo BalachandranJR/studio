@@ -97,17 +97,26 @@ export const ActivitySchema = z.object({
 
 const DayBreakdownSchema = z.object({
     morning: z.object({
-        meal: ActivitySchema.nullable(),
-        activities: z.array(ActivitySchema),
-    }),
+        meal: ActivitySchema.nullable().optional(),
+        activities: z.array(ActivitySchema).optional(),
+    }).optional(),
     afternoon: z.object({
-        meal: ActivitySchema.nullable(),
-        activities: z.array(ActivitySchema),
-    }),
+        meal: ActivitySchema.nullable().optional(),
+        activities: z.array(ActivitySchema).optional(),
+    }).optional(),
     night: z.object({
-        meal: ActivitySchema.nullable(),
-        activities: z.array(ActivitySchema),
-    }),
+        meal: ActivitySchema.nullable().optional(),
+        activities: z.array(ActivitySchema).optional(),
+    }).optional(),
+    
+    // Fallback for different naming conventions
+    morningActivities: z.array(ActivitySchema).optional(),
+    afternoonActivities: z.array(ActivitySchema).optional(),
+    nightActivities: z.array(ActivitySchema).optional(),
+
+    breakfast: ActivitySchema.nullable().optional(),
+    lunch: ActivitySchema.nullable().optional(),
+    dinner: ActivitySchema.nullable().optional(),
 });
 
 export const ItineraryDaySchema = z.object({
@@ -138,9 +147,9 @@ export const CostBreakdownSchema = z.object({
 
 export const ItinerarySchema = z.object({
   id: z.string().optional(),
-  destination: z.string().describe("The travel destination."),
-  startDate: z.string().describe("The start date of the trip, can be a full ISO string."),
-  endDate: z.string().describe("The end date of the trip, can be a full ISO string."),
+  destination: z.string({ required_error: "Destination is required." }),
+  startDate: z.string({ required_error: "Start date is required." }),
+  endDate: z.string({ required_error: "End date is required." }),
   days: z.array(ItineraryDaySchema).describe("A list of days, each with their own schedule."),
   accommodation: AccommodationSchema.optional(),
   costBreakdown: CostBreakdownSchema.optional(),

@@ -32,13 +32,14 @@ interface ItineraryDisplayProps {
   onRestart: () => void;
 }
 
-const ActivityDetail = ({ icon: Icon, label, value, note }: { icon: React.ElementType, label: string, value?: string, note?: string }) => {
+const ActivityDetail = ({ icon: Icon, label, value, note }: { icon: React.ElementType, label: string, value?: string | number, note?: string }) => {
   if (!value && !note) return null;
+  const displayValue = typeof value === 'number' && label.toLowerCase() === 'cost' ? `$${value}` : value;
   return (
     <div className="flex items-start text-xs text-muted-foreground mt-1">
       <Icon className="h-3 w-3 mr-2 mt-0.5 shrink-0" />
       <span className="font-semibold mr-1">{label}:</span>
-      <span>{value} {note && <span className="italic">({note})</span>}</span>
+      <span>{displayValue} {note && <span className="italic">({note})</span>}</span>
     </div>
   );
 };
@@ -59,7 +60,7 @@ const ActivityCard = ({ activity }: { activity: Activity }) => {
                 <p className="text-muted-foreground pl-6">{activity.description}</p>
                 <div className="pl-6 mt-2 space-y-1">
                     <ActivityDetail icon={MapPin} label="Location" value={activity.location} />
-                    <ActivityDetail icon={DollarSign} label="Cost" value={typeof activity.cost === 'number' ? `$${activity.cost}` : activity.cost} />
+                    <ActivityDetail icon={DollarSign} label="Cost" value={activity.cost} />
                     <ActivityDetail icon={Bus} label="Transport" value={activity.transport} />
                     <ActivityDetail icon={Info} label="Notes" value={activity.notes} />
                 </div>
@@ -76,10 +77,10 @@ const TimeOfDayBlock = ({
 }: {
   icon: React.ElementType,
   title: string,
-  meal: Activity | null,
-  activities: Activity[]
+  meal: Activity | null | undefined,
+  activities: Activity[] | undefined
 }) => {
-  if (!meal && activities.length === 0) {
+  if (!meal && (!activities || activities.length === 0)) {
     return null;
   }
   return (
@@ -90,7 +91,7 @@ const TimeOfDayBlock = ({
       </h4>
       <div className="space-y-4 pl-4 border-l-2 border-primary/50 ml-2">
         {meal && <ActivityCard activity={meal} />}
-        {activities.map((activity, index) => (
+        {activities && activities.map((activity, index) => (
             <ActivityCard key={index} activity={activity} />
         ))}
       </div>
@@ -184,6 +185,8 @@ const CostBreakdown = ({ costBreakdown }: { costBreakdown?: Itinerary['costBreak
     { label: "Activities", value: costBreakdown.activities },
     { label: "Nightlife", value: costBreakdown.nightlife },
   ].filter(item => typeof item.value !== 'undefined' && item.value !== null);
+  
+  const totalCost = costBreakdown.total ?? "N/A";
 
   return (
     <Card>
@@ -203,7 +206,7 @@ const CostBreakdown = ({ costBreakdown }: { costBreakdown?: Itinerary['costBreak
           <hr className="my-4" />
           <div className="flex justify-between font-bold text-lg">
             <span>Grand Total</span>
-            <span>${costBreakdown.total}</span>
+            <span>${totalCost}</span>
           </div>
           {costBreakdown.notes && (
             <p className="text-xs text-muted-foreground mt-4">{costBreakdown.notes}</p>
@@ -212,6 +215,7 @@ const CostBreakdown = ({ costBreakdown }: { costBreakdown?: Itinerary['costBreak
     </Card>
   );
 };
+
 
 function sortActivities(activities: Activity[] = []): Activity[] {
   const parseTimeToMinutes = (timeStr: string | undefined): number => {
@@ -264,14 +268,22 @@ export function ItineraryDisplay({ itinerary, preferences, onRestart }: Itinerar
   const totalDays = differenceInDays(endDate, startDate) + 1;
   const allDays = Array.from({ length: totalDays }, (_, i) => {
       const currentDate = addDays(startDate, i);
+      const currentDateStr = format(currentDate, 'yyyy-MM-dd');
       // Find the corresponding day from the itinerary data
       const itineraryDay = itinerary.days.find(d => {
           if (!d.date) return false;
           try {
+              // Normalize the date from itinerary data to compare
               const itineraryDate = parseISO(d.date);
-              return format(currentDate, 'yyyy-MM-dd') === format(itineraryDate, 'yyyy-MM-dd');
+              return format(itineraryDate, 'yyyy-MM-dd') === currentDateStr;
           } catch (e) {
-              return false;
+              // Also check for non-standard date formats like "Jul 18, 2025"
+              try {
+                const parsedDate = new Date(d.date);
+                return format(parsedDate, 'yyyy-MM-dd') === currentDateStr;
+              } catch (e2) {
+                return false;
+              }
           }
       });
       return {
@@ -316,45 +328,65 @@ export function ItineraryDisplay({ itinerary, preferences, onRestart }: Itinerar
                     </CardHeader>
                     <CardContent>
                     <Accordion type="multiple" value={openDays} onValueChange={setOpenDays} className="w-full">
-                    {allDays.map(({ dayNumber, date, data: day }) => (
+                    {allDays.map(({ dayNumber, date, data: day }) => {
+                       const b = day?.breakdown;
+                       const morningMeal = b?.breakfast ?? b?.morning?.meal;
+                       const morningActivities = b?.morningActivities ?? b?.morning?.activities;
+                       
+                       const afternoonMeal = b?.lunch ?? b?.afternoon?.meal;
+                       const afternoonActivities = b?.afternoonActivities ?? b?.afternoon?.activities;
+                       
+                       const nightMeal = b?.dinner ?? b?.night?.meal;
+                       const nightActivities = b?.nightActivities ?? b?.night?.activities;
+
+                       const hasContent = morningMeal || afternoonMeal || nightMeal ||
+                                          (morningActivities && morningActivities.length > 0) ||
+                                          (afternoonActivities && afternoonActivities.length > 0) ||
+                                          (nightActivities && nightActivities.length > 0) ||
+                                          (day?.activities && day.activities.length > 0);
+
+                       return (
                         <AccordionItem value={`day-${dayNumber}`} key={dayNumber}>
                         <AccordionTrigger className="font-headline text-lg">
                             Day {dayNumber}: {date}
                         </AccordionTrigger>
                         <AccordionContent>
-                            {day?.breakdown ? (
-                              <div className="divide-y">
-                                <TimeOfDayBlock 
-                                  icon={Sun}
-                                  title="Morning"
-                                  meal={day.breakdown.morning.meal}
-                                  activities={day.breakdown.morning.activities}
-                                />
-                                <TimeOfDayBlock 
-                                  icon={Sunset}
-                                  title="Afternoon"
-                                  meal={day.breakdown.afternoon.meal}
-                                  activities={day.breakdown.afternoon.activities}
-                                />
-                                <TimeOfDayBlock 
-                                  icon={Moon}
-                                  title="Night"
-                                  meal={day.breakdown.night.meal}
-                                  activities={day.breakdown.night.activities}
-                                />
-                              </div>
-                            ) : day?.activities ? (
-                               <div className="space-y-4 pl-4 border-l-2 border-primary/50 ml-2">
-                                {sortActivities(day.activities).map((activity, activityIndex) => (
-                                    <ActivityCard key={activityIndex} activity={activity} />
-                                ))}
-                               </div>
+                           {hasContent ? (
+                                b ? (
+                                  <div className="divide-y">
+                                    <TimeOfDayBlock 
+                                      icon={Sun}
+                                      title="Morning"
+                                      meal={morningMeal}
+                                      activities={morningActivities}
+                                    />
+                                    <TimeOfDayBlock 
+                                      icon={Sunset}
+                                      title="Afternoon"
+                                      meal={afternoonMeal}
+                                      activities={afternoonActivities}
+                                    />
+                                    <TimeOfDayBlock 
+                                      icon={Moon}
+                                      title="Night"
+                                      meal={nightMeal}
+                                      activities={nightActivities}
+                                    />
+                                  </div>
+                                ) : ( // Fallback to flat activities list
+                                   <div className="space-y-4 pl-4 border-l-2 border-primary/50 ml-2">
+                                    {sortActivities(day?.activities).map((activity, activityIndex) => (
+                                        <ActivityCard key={activityIndex} activity={activity} />
+                                    ))}
+                                   </div>
+                                )
                             ) : (
                               <div className="pl-4 text-muted-foreground italic">No activities planned for this day.</div>
                             )}
                         </AccordionContent>
                         </AccordionItem>
-                    ))}
+                       );
+                    })}
                     </Accordion>
                 </CardContent>
                 </Card>
@@ -398,5 +430,3 @@ export function ItinerarySkeleton() {
     </Card>
   );
 }
-
-    
