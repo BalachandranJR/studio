@@ -69,31 +69,25 @@ const ActivityCard = ({ activity }: { activity: Activity }) => {
     );
 };
 
-const DaySection = ({ title, section }: { title: string, section?: { meal?: Activity | null, activities?: Activity[], reason?: string | null } }) => {
-  if (!section) return null;
-  
-  const allActivities = [...(section.meal ? [section.meal] : []), ...(section.activities || [])];
+const DaySection = ({ title, meal, activities }: { title: string, meal?: Activity | null, activities?: Activity[] }) => {
+  const allItems = [...(meal ? [meal] : []), ...(activities || [])];
 
-  if (allActivities.length === 0) {
-    return section.reason ? (
-        <div className="space-y-4 py-4">
-            <h4 className="font-semibold text-md text-primary">{title}</h4>
-            <p className="pl-4 text-muted-foreground italic">{section.reason}</p>
-        </div>
-    ) : null;
+  if (allItems.length === 0) {
+    return null;
   }
-
+  
   return (
     <div className="space-y-4 py-4">
       <h4 className="font-semibold text-md text-primary">{title}</h4>
       <div className="space-y-4 pl-4 border-l-2 border-primary/50 ml-2">
-          {allActivities.map((activity, index) => (
+          {allItems.map((activity, index) => (
             <ActivityCard key={index} activity={activity} />
           ))}
       </div>
     </div>
   );
 };
+
 
 const SummaryDetail = ({ icon: Icon, label, value }: { icon: React.ElementType, label: string, value: string | React.ReactNode }) => {
     return (
@@ -306,10 +300,14 @@ export function ItineraryDisplay({ itinerary, preferences, onRestart }: Itinerar
                     <CardContent>
                     <Accordion type="multiple" value={openDays} onValueChange={setOpenDays} className="w-full">
                     {allDays.map(({ dayNumber, date, data: day }) => {
-                       const hasContent = day && (
-                         (day.morning && (day.morning.meal || (day.morning.activities && day.morning.activities.length > 0))) ||
-                         (day.afternoon && (day.afternoon.meal || (day.afternoon.activities && day.afternoon.activities.length > 0))) ||
-                         (day.evening && (day.evening.meal || (day.evening.activities && day.evening.activities.length > 0)))
+                       const breakdown = day?.breakdown;
+                       const hasContent = breakdown && (
+                         breakdown.breakfast ||
+                         breakdown.lunch ||
+                         breakdown.dinner ||
+                         (breakdown.morningActivities && breakdown.morningActivities.length > 0) ||
+                         (breakdown.afternoonActivities && breakdown.afternoonActivities.length > 0) ||
+                         (breakdown.nightlifeActivities && breakdown.nightlifeActivities.length > 0)
                        );
 
                        return (
@@ -318,11 +316,11 @@ export function ItineraryDisplay({ itinerary, preferences, onRestart }: Itinerar
                             Day {dayNumber}: {date}
                         </AccordionTrigger>
                         <AccordionContent>
-                           {hasContent ? (
+                           {hasContent && breakdown ? (
                                 <div className="divide-y">
-                                    <DaySection title="Morning" section={day.morning} />
-                                    <DaySection title="Afternoon" section={day.afternoon} />
-                                    <DaySection title="Evening" section={day.evening} />
+                                    <DaySection title="Morning" meal={breakdown.breakfast} activities={breakdown.morningActivities} />
+                                    <DaySection title="Afternoon" meal={breakdown.lunch} activities={breakdown.afternoonActivities} />
+                                    <DaySection title="Evening" meal={breakdown.dinner} activities={breakdown.nightlifeActivities} />
                                 </div>
                             ) : (
                               <div className="pl-4 text-muted-foreground italic py-4">No activities planned for this day.</div>
@@ -407,5 +405,3 @@ export function ItinerarySkeleton() {
     </Card>
   );
 }
-
-    

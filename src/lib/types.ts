@@ -94,20 +94,21 @@ export const ActivitySchema = z.object({
   notes: z.string().optional(),
 });
 
-const DaySectionSchema = z.object({
-    meal: ActivitySchema.nullable().optional(),
-    activities: z.array(ActivitySchema).optional(),
-    reason: z.string().nullable().optional(),
+const DayBreakdownSchema = z.object({
+    breakfast: ActivitySchema.nullable().optional(),
+    lunch: ActivitySchema.nullable().optional(),
+    dinner: ActivitySchema.nullable().optional(),
+    morningActivities: z.array(ActivitySchema).optional(),
+    afternoonActivities: z.array(ActivitySchema).optional(),
+    nightlifeActivities: z.array(ActivitySchema).optional(),
+    reason: z.string().nullable().optional(), // For future use if needed
 });
 
 export const ItineraryDaySchema = z.object({
   day: z.number().describe("The day number of the itinerary, starting from 1."),
   date: z.string().describe("The date for this day's activities."),
   activities: z.array(ActivitySchema).optional().describe("A flat list of all activities for the day for backward compatibility."),
-  morning: DaySectionSchema.optional(),
-  afternoon: DaySectionSchema.optional(),
-  evening: DaySectionSchema.optional(),
-  breakdown: z.any().optional(), // Keep for backward compatibility if needed
+  breakdown: DayBreakdownSchema.optional(),
 });
 
 export const AccommodationSchema = z.object({
