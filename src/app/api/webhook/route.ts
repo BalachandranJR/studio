@@ -4,9 +4,16 @@ import { ItinerarySchema } from '@/lib/types';
 import { NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
 import { unstable_noStore as noStore } from 'next/cache';
-import { resultStore } from '@/lib/cache';
+import { promises as fs } from 'fs';
+import path from 'path';
+import os from 'os';
 
 export const dynamic = 'force-dynamic';
+
+const getCacheFilePath = (sessionId: string) => {
+    // IMPORTANT: Use the /tmp directory for temporary file storage in serverless environments
+    return path.join(os.tmpdir(), `${sessionId}.json`);
+};
 
 export async function POST(request: NextRequest) {
   noStore();
@@ -20,6 +27,7 @@ export async function POST(request: NextRequest) {
   }
 
   console.log(`[Webhook] Received POST for sessionId: ${sessionId}`);
+  const cacheFilePath = getCacheFilePath(sessionId);
 
   try {
     const body = await request.json();
@@ -32,17 +40,16 @@ export async function POST(request: NextRequest) {
       const errorMessage = typeof body.error === 'object' ? JSON.stringify(body.error) : body.error;
       dataToCache = { error: `An error occurred in the n8n workflow: ${errorMessage}` };
     } else {
-      // The itinerary object is nested inside the payload.
       if (!body.itinerary) {
           throw new Error("Payload from n8n is missing the 'itinerary' object.");
       }
 
       const validatedItinerary = ItinerarySchema.parse(body.itinerary);
       dataToCache = { itinerary: validatedItinerary };
-      console.log(`[Webhook] Successfully validated itinerary for sessionId: ${sessionId}, storing in cache.`);
+      console.log(`[Webhook] Successfully validated itinerary for sessionId: ${sessionId}, writing to file cache.`);
     }
 
-    resultStore.set(sessionId, dataToCache);
+    await fs.writeFile(cacheFilePath, JSON.stringify(dataToCache));
     
     return NextResponse.json({ success: true, message: "Data received and processed." });
 
@@ -58,7 +65,11 @@ export async function POST(request: NextRequest) {
     }
     
     const errorToCache = { error: errorMessage };
-    resultStore.set(sessionId, errorToCache);
+    try {
+        await fs.writeFile(cacheFilePath, JSON.stringify(errorToCache));
+    } catch (writeError) {
+        console.error(`[Webhook] FATAL: Could not write error to cache for session ${sessionId}:`, writeError);
+    }
 
     return NextResponse.json({ success: false, error: 'Failed to process webhook data' }, { status: 500 });
   }
@@ -75,17 +86,22 @@ export async function GET(request: NextRequest) {
   }
 
   console.log(`[Webhook] Received GET (poll) for sessionId: ${sessionId}`);
+  const cacheFilePath = getCacheFilePath(sessionId);
 
-  const result = resultStore.get(sessionId);
-
-  if (result) {
-    console.log(`[Webhook] Found result in cache for ${sessionId}, returning it.`);
-    // To prevent memory leaks on long-running servers, we can remove the entry after retrieval.
-    // For now, we'll leave it and rely on the TTL cleanup in the cache module.
+  try {
+    const fileContent = await fs.readFile(cacheFilePath, 'utf-8');
+    const result = JSON.parse(fileContent);
+    console.log(`[Webhook] Found result in file cache for ${sessionId}, returning it.`);
+    // Optionally, delete the file after reading to clean up
+    await fs.unlink(cacheFilePath).catch(err => console.error(`[Webhook] Failed to unlink cache file for ${sessionId}:`, err));
     return NextResponse.json(result);
-  } else {
-    console.log(`[Webhook] No result in cache for ${sessionId} yet.`);
-    return NextResponse.json({ status: 'pending' });
+  } catch (error: any) {
+    if (error.code === 'ENOENT') {
+        console.log(`[Webhook] No result in file cache for ${sessionId} yet.`);
+        return NextResponse.json({ status: 'pending' });
+    } else {
+        console.error(`[Webhook] Error reading cache file for ${sessionId}:`, error);
+        return NextResponse.json({ error: 'Failed to read result from cache' }, { status: 500 });
+    }
   }
 }
-
