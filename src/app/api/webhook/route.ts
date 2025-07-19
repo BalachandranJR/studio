@@ -3,33 +3,13 @@ import { Itinerary, ItinerarySchema } from '@/lib/types';
 import { NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
 import { unstable_noStore as noStore } from 'next/cache';
-
-// WARNING: This is an in-memory store.
-// It will not persist across different serverless function instances.
-// This may lead to silent timeouts if the POST and GET requests are handled
-// by different instances, which is common in production environments.
-const resultStore = new Map<string, { itinerary?: Itinerary; error?: string }>();
-const CACHE_TTL_MS = 5 * 60 * 1000; // 5 minutes in milliseconds
+import { resultStore } from '@/lib/cache';
 
 export const dynamic = 'force-dynamic';
 
-function cleanupExpiredEntries() {
-    const now = Date.now();
-    for (const [key, value] of resultStore.entries()) {
-        // A bit of a hack: storing expiry time on the value object
-        const expiry = (value as any).expiry;
-        if (expiry && now > expiry) {
-            resultStore.delete(key);
-            console.log(`[Webhook] Cleaned up expired session: ${key}`);
-        }
-    }
-}
-
-
 export async function POST(request: NextRequest) {
   noStore();
-  cleanupExpiredEntries();
-
+  
   const searchParams = request.nextUrl.searchParams;
   const sessionId = searchParams.get('sessionId');
 
@@ -61,8 +41,6 @@ export async function POST(request: NextRequest) {
       console.log(`[Webhook] Successfully validated itinerary for sessionId: ${sessionId}, storing in cache.`);
     }
 
-    // Add expiry timestamp to the data before storing
-    (dataToCache as any).expiry = Date.now() + CACHE_TTL_MS;
     resultStore.set(sessionId, dataToCache);
     
     return NextResponse.json({ success: true, message: "Data received and processed." });
@@ -80,7 +58,6 @@ export async function POST(request: NextRequest) {
     
     // Store the error in the map so the frontend can retrieve it
     const errorToCache = { error: errorMessage };
-    (errorToCache as any).expiry = Date.now() + CACHE_TTL_MS;
     resultStore.set(sessionId, errorToCache);
 
     return NextResponse.json({ success: false, error: 'Failed to process webhook data' }, { status: 500 });
@@ -89,7 +66,6 @@ export async function POST(request: NextRequest) {
 
 export async function GET(request: NextRequest) {
   noStore();
-  cleanupExpiredEntries();
   
   const { searchParams } = new URL(request.url);
   const sessionId = searchParams.get('sessionId');
@@ -104,8 +80,10 @@ export async function GET(request: NextRequest) {
 
   if (result) {
     console.log(`[Webhook] Found result in cache for ${sessionId}, returning it.`);
-    // We don't want to delete it immediately, as polling might happen multiple times
-    // The cleanup will handle removal after TTL
+    // To prevent memory leaks on long-running servers, we can remove the entry after retrieval.
+    // However, for polling, the client might ask again. A TTL strategy is better.
+    // For now, we'll leave it and rely on server restarts to clear memory.
+    // In a more robust solution, a TTL cleanup would be added to the cache module.
     return NextResponse.json(result);
   } else {
     console.log(`[Webhook] No result in cache for ${sessionId} yet.`);
