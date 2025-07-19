@@ -61,7 +61,13 @@ export async function generateItinerary(
     const responseData = await response.json();
     
     // The incoming body from n8n might be an array, so we handle that
-    const payload = Array.isArray(responseData) ? responseData[0] : responseData;
+    // And it is nested inside a `json` property.
+    const payload = (Array.isArray(responseData) ? responseData[0] : responseData)?.json;
+
+    if (!payload) {
+        console.error("Invalid response structure from n8n: no 'json' property found.", responseData);
+        return { success: false, error: "The itinerary service returned an invalid response structure." };
+    }
 
     // Check if the workflow returned a structured error
     const errorCheck = N8NErrorResponseSchema.safeParse(payload);
