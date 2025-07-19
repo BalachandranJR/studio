@@ -1,30 +1,34 @@
 
-import { kv } from '@/lib/kv';
 import { Itinerary, ItinerarySchema } from '@/lib/types';
 import { NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
 import { unstable_noStore as noStore } from 'next/cache';
 
-const CACHE_TTL_SECONDS = 5 * 60; // 5 minutes in seconds
+// WARNING: This is an in-memory store.
+// It will not persist across different serverless function instances.
+// This may lead to silent timeouts if the POST and GET requests are handled
+// by different instances, which is common in production environments.
+const resultStore = new Map<string, { itinerary?: Itinerary; error?: string }>();
+const CACHE_TTL_MS = 5 * 60 * 1000; // 5 minutes in milliseconds
 
 export const dynamic = 'force-dynamic';
 
-function areKVarsConfigured() {
-    return process.env.KV_REST_API_URL && process.env.KV_REST_API_TOKEN;
+function cleanupExpiredEntries() {
+    const now = Date.now();
+    for (const [key, value] of resultStore.entries()) {
+        // A bit of a hack: storing expiry time on the value object
+        const expiry = (value as any).expiry;
+        if (expiry && now > expiry) {
+            resultStore.delete(key);
+            console.log(`[Webhook] Cleaned up expired session: ${key}`);
+        }
+    }
 }
 
-const unconfiguredError = NextResponse.json(
-    { success: false, error: 'Application is not configured for caching. Vercel KV environment variables are missing.' },
-    { status: 500 }
-);
 
 export async function POST(request: NextRequest) {
   noStore();
-
-  if (!areKVarsConfigured()) {
-    console.error('[Webhook] POST Error: Vercel KV is not configured.');
-    return unconfiguredError;
-  }
+  cleanupExpiredEntries();
 
   const searchParams = request.nextUrl.searchParams;
   const sessionId = searchParams.get('sessionId');
@@ -57,8 +61,9 @@ export async function POST(request: NextRequest) {
       console.log(`[Webhook] Successfully validated itinerary for sessionId: ${sessionId}, storing in cache.`);
     }
 
-    // Use Vercel KV to store the result with a Time-To-Live (TTL)
-    await kv.set(sessionId, JSON.stringify(dataToCache), { ex: CACHE_TTL_SECONDS });
+    // Add expiry timestamp to the data before storing
+    (dataToCache as any).expiry = Date.now() + CACHE_TTL_MS;
+    resultStore.set(sessionId, dataToCache);
     
     return NextResponse.json({ success: true, message: "Data received and processed." });
 
@@ -73,8 +78,10 @@ export async function POST(request: NextRequest) {
       errorMessage = error.message;
     }
     
-    // Store the error in KV so the frontend can retrieve it
-    await kv.set(sessionId, JSON.stringify({ error: errorMessage }), { ex: CACHE_TTL_SECONDS });
+    // Store the error in the map so the frontend can retrieve it
+    const errorToCache = { error: errorMessage };
+    (errorToCache as any).expiry = Date.now() + CACHE_TTL_MS;
+    resultStore.set(sessionId, errorToCache);
 
     return NextResponse.json({ success: false, error: 'Failed to process webhook data' }, { status: 500 });
   }
@@ -82,11 +89,7 @@ export async function POST(request: NextRequest) {
 
 export async function GET(request: NextRequest) {
   noStore();
-
-  if (!areKVarsConfigured()) {
-    console.error('[Webhook] GET Error: Vercel KV is not configured.');
-    return unconfiguredError;
-  }
+  cleanupExpiredEntries();
   
   const { searchParams } = new URL(request.url);
   const sessionId = searchParams.get('sessionId');
@@ -97,11 +100,12 @@ export async function GET(request: NextRequest) {
 
   console.log(`[Webhook] Received GET (poll) for sessionId: ${sessionId}`);
 
-  // Retrieve the result from Vercel KV
-  const result = await kv.get<{ itinerary?: Itinerary; error?: string }>(sessionId);
+  const result = resultStore.get(sessionId);
 
   if (result) {
     console.log(`[Webhook] Found result in cache for ${sessionId}, returning it.`);
+    // We don't want to delete it immediately, as polling might happen multiple times
+    // The cleanup will handle removal after TTL
     return NextResponse.json(result);
   } else {
     console.log(`[Webhook] No result in cache for ${sessionId} yet.`);
