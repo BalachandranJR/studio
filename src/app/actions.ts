@@ -14,15 +14,11 @@ const actionSchema = travelPreferenceSchema.extend({
   })
 });
 
-// This now represents the 'data' object within the n8n response
-const N8NResponseDataSchema = z.object({
-  itinerary: ItinerarySchema,
-});
-
-// This represents the top-level structure from the n8n workflow
+// This now represents the top-level structure of a successful response from the n8n workflow.
+// The itinerary is expected to be directly inside the 'data' property.
 const N8NSuccessResponseSchema = z.object({
     success: z.literal(true),
-    data: N8NResponseDataSchema
+    data: ItinerarySchema // The itinerary is now directly here
 });
 
 // This type represents a potential error response from the n8n workflow
@@ -54,7 +50,7 @@ export async function generateItinerary(
         'Content-Type': 'application/json',
       },
       body: JSON.stringify(validatedData),
-      cache: 'no-store', // Ensure we always get a fresh response
+      cache: 'no-store',
     });
 
     if (!response.ok) {
@@ -63,10 +59,11 @@ export async function generateItinerary(
         return { success: false, error: `The itinerary service returned an error (Status: ${response.status}).` };
     }
 
-    const responseData = await response.json();
+    const rawResponse = await response.json();
     
-    // The incoming body from the new n8n workflow should be a single object.
-    // Let's add more detailed logging to be sure.
+    // The incoming body from n8n is often an array with one element
+    const responseData = Array.isArray(rawResponse) ? rawResponse[0] : rawResponse;
+    
     console.log("Received data from n8n:", JSON.stringify(responseData, null, 2));
 
     // Check if the workflow returned a structured error first
@@ -83,7 +80,8 @@ export async function generateItinerary(
       return { success: false, error: "The itinerary service returned an unexpected data format." };
     }
 
-    return { success: true, itinerary: result.data.data.itinerary };
+    // The itinerary is now located at result.data
+    return { success: true, itinerary: result.data };
 
   } catch (error) {
     console.error('Error in generateItinerary action:', error);
