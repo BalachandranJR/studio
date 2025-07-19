@@ -1,5 +1,6 @@
 
-import { Itinerary, ItinerarySchema } from '@/lib/types';
+import type { Itinerary } from '@/lib/types';
+import { ItinerarySchema } from '@/lib/types';
 import { NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
 import { unstable_noStore as noStore } from 'next/cache';
@@ -31,9 +32,12 @@ export async function POST(request: NextRequest) {
       const errorMessage = typeof body.error === 'object' ? JSON.stringify(body.error) : body.error;
       dataToCache = { error: `An error occurred in the n8n workflow: ${errorMessage}` };
     } else {
-      // The entire body is the itinerary object from the n8n workflow.
-      // We parse the body directly, not a nested property.
-      const validatedItinerary = ItinerarySchema.parse(body);
+      // The itinerary object is nested inside the payload.
+      if (!body.itinerary) {
+          throw new Error("Payload from n8n is missing the 'itinerary' object.");
+      }
+
+      const validatedItinerary = ItinerarySchema.parse(body.itinerary);
       dataToCache = { itinerary: validatedItinerary };
       console.log(`[Webhook] Successfully validated itinerary for sessionId: ${sessionId}, storing in cache.`);
     }
@@ -53,7 +57,6 @@ export async function POST(request: NextRequest) {
       errorMessage = error.message;
     }
     
-    // Store the error in the map so the frontend can retrieve it
     const errorToCache = { error: errorMessage };
     resultStore.set(sessionId, errorToCache);
 
@@ -78,12 +81,11 @@ export async function GET(request: NextRequest) {
   if (result) {
     console.log(`[Webhook] Found result in cache for ${sessionId}, returning it.`);
     // To prevent memory leaks on long-running servers, we can remove the entry after retrieval.
-    // However, for polling, the client might ask again. A TTL strategy is better.
-    // For now, we'll leave it and rely on server restarts to clear memory.
-    // In a more robust solution, a TTL cleanup would be added to the cache module.
+    // For now, we'll leave it and rely on the TTL cleanup in the cache module.
     return NextResponse.json(result);
   } else {
     console.log(`[Webhook] No result in cache for ${sessionId} yet.`);
     return NextResponse.json({ status: 'pending' });
   }
 }
+
