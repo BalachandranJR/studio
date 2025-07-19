@@ -109,7 +109,9 @@ const DayTemplateSchema = z.object({
 export const ItineraryDaySchema = z.object({
   day: z.number().describe("The day number of the itinerary, starting from 1."),
   date: z.string().describe("The date for this day's activities."),
+  // The flat list is optional, as the primary source of truth is the template.
   activities: z.array(ActivitySchema).optional().describe("A flat list of all activities for the day."),
+  // The template is now the primary, but optional, way to structure a day's activities.
   template: DayTemplateSchema.optional().describe("The structured breakdown of activities for the day."),
 });
 
@@ -145,5 +147,3 @@ export const ItinerarySchema = z.object({
 export type Activity = z.infer<typeof ActivitySchema>;
 export type ItineraryDay = z.infer<typeof ItineraryDaySchema>;
 export type Itinerary = z.infer<typeof ItinerarySchema>;
-
-    

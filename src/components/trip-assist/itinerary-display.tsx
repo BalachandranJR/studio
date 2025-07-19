@@ -292,22 +292,24 @@ export function ItineraryDisplay({ itinerary, preferences, onRestart }: Itinerar
                     <CardContent>
                     <Accordion type="multiple" value={openDays} onValueChange={setOpenDays} className="w-full">
                     {allDays.map(({ dayNumber, date, data: day }) => {
+                       // Robust check for activities, preferring the structured template but falling back to the flat list.
                        const dayTemplate = day?.template;
+                       const flatActivities = day?.activities || [];
                        const eveningActivities = [
                           ...(dayTemplate?.eveningActivities || []),
                           ...(dayTemplate?.nightlifeActivities || []),
                        ].filter(Boolean);
 
-                       const hasContent = dayTemplate && (
+                       const hasContent = dayTemplate ? (
                           dayTemplate.startOfDay ||
                           dayTemplate.breakfast ||
-                          dayTemplate.morningActivities?.length > 0 ||
+                          (dayTemplate.morningActivities && dayTemplate.morningActivities.length > 0) ||
                           dayTemplate.lunch ||
-                          dayTemplate.middayActivities?.length > 0 ||
+                          (dayTemplate.middayActivities && dayTemplate.middayActivities.length > 0) ||
                           dayTemplate.dinner ||
                           eveningActivities.length > 0 ||
                           dayTemplate.endOfDay
-                       );
+                       ) : flatActivities.length > 0;
 
                        return (
                         <AccordionItem value={`day-${dayNumber}`} key={dayNumber}>
@@ -316,6 +318,7 @@ export function ItineraryDisplay({ itinerary, preferences, onRestart }: Itinerar
                         </AccordionTrigger>
                         <AccordionContent>
                            {hasContent ? (
+                                dayTemplate ? (
                                   <div className="divide-y">
                                     <DaySection title="Start of Day" activities={[dayTemplate.startOfDay]} />
                                     <DaySection title="Morning" activities={[dayTemplate.breakfast, ...(dayTemplate.morningActivities || [])]} />
@@ -323,6 +326,14 @@ export function ItineraryDisplay({ itinerary, preferences, onRestart }: Itinerar
                                     <DaySection title="Evening" activities={[dayTemplate.dinner, ...eveningActivities]} />
                                     <DaySection title="End of Day" activities={[dayTemplate.endOfDay]} />
                                   </div>
+                                ) : (
+                                  // Fallback to render the flat list if template is missing
+                                  <div className="space-y-4 py-4 pl-4 border-l-2 border-primary/50 ml-2">
+                                      {flatActivities.map((activity, index) => (
+                                          <ActivityCard key={index} activity={activity} />
+                                      ))}
+                                  </div>
+                                )
                             ) : (
                               <div className="pl-4 text-muted-foreground italic py-4">No activities planned for this day.</div>
                             )}
@@ -406,5 +417,3 @@ export function ItinerarySkeleton() {
     </Card>
   );
 }
-
-    
