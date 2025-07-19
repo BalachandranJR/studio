@@ -16,7 +16,7 @@ import type { Itinerary, TravelPreference } from "@/lib/types";
 import { Button } from "@/components/ui/button";
 
 const POLLING_INTERVAL_MS = 3000;
-const POLLING_TIMEOUT_MS = 120000; // 2 minutes
+const POLLING_TIMEOUT_MS = 300000; // 5 minutes
 
 // The result from the webhook is now typed to reflect the actual nested structure
 type PollResult = {
