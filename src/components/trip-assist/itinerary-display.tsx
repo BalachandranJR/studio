@@ -37,7 +37,7 @@ const ActivityDetail = ({ icon: Icon, label, value, note }: { icon: React.Elemen
   return (
     <div className="flex items-start text-xs text-muted-foreground mt-1">
       <Icon className="h-3 w-3 mr-2 mt-0.5 shrink-0" />
-      {value && <span className="font-semibold mr-1">{label}:</span>}
+      <span className="font-semibold mr-1">{label}:</span>
       <span>{value} {note && <span className="italic">({note})</span>}</span>
     </div>
   );
@@ -183,7 +183,7 @@ const CostBreakdown = ({ costBreakdown }: { costBreakdown?: Itinerary['costBreak
     { label: "Meals", value: costBreakdown.meals },
     { label: "Activities", value: costBreakdown.activities },
     { label: "Nightlife", value: costBreakdown.nightlife },
-  ].filter(item => typeof item.value !== 'undefined');
+  ].filter(item => typeof item.value !== 'undefined' && item.value !== null);
 
   return (
     <Card>
@@ -213,34 +213,37 @@ const CostBreakdown = ({ costBreakdown }: { costBreakdown?: Itinerary['costBreak
   );
 };
 
-function sortActivities(activities: Activity[] = []) {
+function sortActivities(activities: Activity[] = []): Activity[] {
   const parseTimeToMinutes = (timeStr: string | undefined): number => {
-    if (!timeStr) return 9999;
-    const lowerTime = timeStr.toLowerCase().trim();
+      if (!timeStr) return 9999;
+      const lowerTime = timeStr.toLowerCase().trim();
 
-    const timeMap: { [key: string]: number } = {
-        'full day': 1, 'all day': 1, 'early morning': 360, 'morning': 540,
-        'late morning': 660, 'brunch': 660, 'lunch': 720, 'afternoon': 840,
-        'late afternoon': 960, 'evening': 1080, 'dinner': 1140, 'night': 1260,
-        'late night': 1380,
-    };
+      const timeMap: { [key: string]: number } = {
+          'early morning': 360, 'morning': 540, 'breakfast': 540,
+          'late morning': 660, 'brunch': 660, 
+          'lunch': 720, 'afternoon': 840, 'midday': 840,
+          'late afternoon': 960, 
+          'evening': 1080, 'dinner': 1140, 
+          'night': 1260, 'late night': 1380,
+      };
 
-    for (const key in timeMap) {
-        if (lowerTime.includes(key)) return timeMap[key];
-    }
+      for (const key in timeMap) {
+          if (lowerTime.includes(key)) return timeMap[key];
+      }
 
-    const match = lowerTime.match(/(\d{1,2})[:.]?(\d{2})?\s*(am|pm)?/);
-    if (!match) return 9998;
+      const match = lowerTime.match(/(\d{1,2})[:.]?(\d{2})?\s*(am|pm)?/);
+      if (!match) return 9998; // Fallback for non-standard string times
 
-    let [_, hoursStr, minutesStr, period] = match;
-    let hours = parseInt(hoursStr, 10);
-    const minutes = minutesStr ? parseInt(minutesStr, 10) : 0;
-    if (isNaN(hours)) return 9997;
+      let [_, hoursStr, minutesStr, period] = match;
+      let hours = parseInt(hoursStr, 10);
+      const minutes = minutesStr ? parseInt(minutesStr, 10) : 0;
+      if (isNaN(hours)) return 9997; // Invalid number
 
-    if (period === 'pm' && hours < 12) hours += 12;
-    else if (period === 'am' && hours === 12) hours = 0;
-    return hours * 60 + minutes;
-  }
+      if (period === 'pm' && hours < 12) hours += 12;
+      else if (period === 'am' && hours === 12) hours = 0; // Midnight case
+      
+      return hours * 60 + minutes;
+  };
   return [...activities].sort((a, b) => parseTimeToMinutes(a.time) - parseTimeToMinutes(b.time));
 }
 

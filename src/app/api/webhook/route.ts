@@ -4,7 +4,7 @@ import { ItinerarySchema, Itinerary } from '@/lib/types';
 import { z } from 'zod';
 import { unstable_noStore as noStore } from 'next/cache';
 
-// This is a more robust way to handle in-memory cache in a serverless environment like Vercel.
+// This is a more robust way to handle in-memory cache in a serverless environment like Vercel/Next.js.
 // It attaches the cache to the global object, which can persist between "warm" function invocations.
 const globalForCache = globalThis as unknown as {
   resultCache: Map<string, { itinerary?: Itinerary; error?: string }> | undefined;
